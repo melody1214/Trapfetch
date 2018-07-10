@@ -1,6 +1,9 @@
 #define	_GNU_SOURCE
 
+#if ARCH == 32
 #define	FILE_OFFSET_BITS	64	
+#endif
+
 #define	LARGEFILE_SOURCE
 
 #include <math.h>
@@ -21,6 +24,8 @@
 #include <sys/types.h>
 #include <sys/ptrace.h>
 #include <sys/syscall.h>
+
+#define LOG_PATH		"/home/melody/study/projects/trapfetch/logs/"
 
 #define	OPEN_FLAG		"w"
 #define	OPEN_PERM		S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
@@ -124,3 +129,4 @@ int nprocs;
 FILE *fp_read;
 FILE *fp_candidates;
 int insyscall;
+siginfo_t si;
