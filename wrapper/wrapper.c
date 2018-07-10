@@ -21,6 +21,9 @@
 #define	SECTOR_SIZE	512
 #define	EXTENT_MAX_COUNT	512
 
+#define READ_PATH	"/home/melody/study/projects/trapfetch/logs/r."
+#define CANDIDATE_PATH	"/home/melody/study/projects/trapfetch/logs/c."
+
 #define	OPEN_FLAG	"a"
 
 static FILE *fp_log = NULL;
@@ -117,13 +120,22 @@ ssize_t read(int fildes, void *buf, size_t nbyte)
 		return ret;
 
 	// check whether the file is a regular file
-	stat(fname, &fstatus);
-	if (!S_ISREG(fstatus.st_mode))
+	lstat(fname, &fstatus);
+	switch (fstatus.st_mode & S_IFMT) {
+		case S_IFREG:
+		case S_IFLNK:
+			break;
+		default:
+			return ret;
+	}
+
+	if (fstatus.st_size == 0) {
 		return ret;
+	}
 
 	if (fp_log == NULL) {
 		memset(path, '\0', sizeof(path));
-		strcpy(path, "/home/melody/study/projects/trapfetch/logs/read_");
+		strcpy(path, READ_PATH);
 		strcat(path, basename(getenv("TARGET_PROGRAM")));
 		fp_log = fopen(path, OPEN_FLAG);
 	}
@@ -132,7 +144,7 @@ ssize_t read(int fildes, void *buf, size_t nbyte)
 	timestamp = gettime();
 
 	// record the log. {path, timestamp, file offset, length and LBN}
-	fprintf(fp_log, "R,%s,%lld,%ld,%ld\n", fname, timestamp, (long)pos, (long)ret);
+	fprintf(fp_log, "r,%s,%lld,%ld,%ld\n", fname, timestamp, (long)pos, (long)ret);
 
 	// return the return value of the original read.
 	return ret;
@@ -167,20 +179,29 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 	if (ret <= 0)
 		return ret;
 
-	stat(fname, &fstatus);
-	if (!S_ISREG(fstatus.st_mode))
+	lstat(fname, &fstatus);
+	switch (fstatus.st_mode & S_IFMT) {
+		case S_IFREG:
+		case S_IFLNK:
+			break;
+		default:
+			return ret;
+	}
+
+	if (fstatus.st_size == 0) {
 		return ret;
+	}
 
 	if (fp_log == NULL) {
 		memset(path, '\0', sizeof(path));
-		strcpy(path, "/home/melody/study/projects/trapfetch/logs/read_");
+		strcpy(path, READ_PATH);
 		strcat(path, basename(getenv("TARGET_PROGRAM")));
 		fp_log = fopen(path, OPEN_FLAG);
 	}
 
 	timestamp = gettime();
 
-	fprintf(fp_log, "R,%s,%lld,%ld,%ld\n", fname, timestamp, (long)pos, (long)(ret * size));
+	fprintf(fp_log, "r,%s,%lld,%ld,%ld\n", fname, timestamp, (long)pos, (long)(ret * size));
 
 	return ret;
 }
@@ -197,7 +218,7 @@ void *memmove(void *dest, const void *src, size_t n)
 
 	if (fp_fcandidates == NULL) {
 		memset(path, '\0', sizeof(path));
-		strcpy(path, "/home/melody/study/projects/trapfetch/logs/cand_");
+		strcpy(path, CANDIDATE_PATH);
 		strcat(path, basename(getenv("TARGET_PROGRAM")));
 		fp_fcandidates = fopen(path, OPEN_FLAG);
 	}
@@ -222,7 +243,7 @@ char *strcpy(char *dest, const char *src)
 	
 	if (fp_fcandidates == NULL) {
 		memset(path, '\0', sizeof(path));
-		strcpy(path, "/home/melody/study/projects/trapfetch/logs/cand_");
+		strcpy(path, CANDIDATE_PATH);
 		strcat(path, basename(getenv("TARGET_PROGRAM")));
 		fp_fcandidates = fopen(path, OPEN_FLAG);
 	}
@@ -246,7 +267,7 @@ void *memcpy(void *dest, const void *src, size_t n)
 
 	if (fp_fcandidates == NULL) {
 		memset(path, '\0', sizeof(path));
-		strcpy(path, "/home/melody/study/projects/trapfetch/logs/cand_");
+		strcpy(path, CANDIDATE_PATH);
 		strcat(path, basename(getenv("TARGET_PROGRAM")));
 		fp_fcandidates = fopen(path, OPEN_FLAG);
 	}
@@ -270,7 +291,7 @@ size_t strlen(const char *s)
 
 	if (fp_fcandidates == NULL) {
 		memset(path, '\0', sizeof(path));
-		strcpy(path, "/home/melody/study/projects/trapfetch/logs/cand_");
+		strcpy(path, CANDIDATE_PATH);
 		strcat(path, basename(getenv("TARGET_PROGRAM")));
 		fp_fcandidates = fopen(path, OPEN_FLAG);
 	}
