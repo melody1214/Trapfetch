@@ -17,7 +17,11 @@ static void write_mmap_log(struct user_regs_struct *regs, char *fname, long long
 	void *mm_start, *mm_end;
 
 	md = hash(fname);
+#if ARCH == 32
+	off = (long long)regs->ARGS_5 * PAGE_SIZE;
+#else
 	off = regs->ARGS_5;
+#endif
 	len = regs->ARGS_1;
 	prot = (int)regs->ARGS_2;
 
@@ -159,13 +163,22 @@ static int ptrace_getinfo(const unsigned int op, pid_t pid, void *info) {
 	int err;
 
 	errno = 0;
-	ptrace(op, pid, 0, &info);
+
+	switch (op) {
+		case PTRACE_GETREGS:
+			ptrace(op, pid, 0, (struct user_regs_struct *)info);
+		case PTRACE_GETSIGINFO:
+			ptrace(op, pid, 0, (struct siginfo_t *)info);
+		case PTRACE_GETEVENTMSG:
+			ptrace(op, pid, 0, (unsigned long *)info);
+	}
+
 	err = errno;
 
 	if (!err)
 		return 0;
 
-	perror("ptrace_getinfo")
+	perror("ptrace_getinfo");
 	return -1;
 }
 
@@ -187,7 +200,7 @@ bool trace(void)
 	void *ret_addr;
 	
 	struct stat fstatus;
-	//struct user_regs_struct regs;
+	// struct user_regs_struct regs;
 
 	char buf[512], fname[512];
 
@@ -280,6 +293,10 @@ bool trace(void)
 					goto restart;
 				}
 
+				if ((int)regs.ARGS_3 & 0x20 == 0x20) {
+					goto restart;
+				}
+
 				// syscall-entry stop
 				if (insyscall == 0) {
 					insyscall = 1;
@@ -293,8 +310,16 @@ bool trace(void)
 					goto restart;
 				}
 					
-				stat(fname, &fstatus);
-				if (!S_ISREG(fstatus.st_mode)) {
+				lstat(fname, &fstatus);
+				switch (fstatus.st_mode & S_IFMT) {
+					case S_IFREG:
+					case S_IFLNK:
+						break;
+					default:
+						goto restart;
+				}
+	
+				if (fstatus.st_size == 0) {
 					goto restart;
 				}
 
@@ -313,7 +338,6 @@ bool trace(void)
 						exit(EXIT_FAILURE);
 				}
 			}
-			return true;
 		case PTRACE_EVENT_EXIT:
 			if (tracee == thread_leader) {
 				printf("leader exit with nprocs : %d\n", nprocs);
@@ -345,6 +369,7 @@ void startup_child(int argc, char **argv)
 	unsigned int wait_status;
 	char fname[512];
 
+	// struct user_regs_struct regs;
 	struct stat fstatus;
 	long long timestamp;
 
@@ -373,9 +398,9 @@ void startup_child(int argc, char **argv)
 		free(basec);
 
 #if ARCH == 64
-		setenv("LD_PRELOAD", "/home/melody/study/projects/trapfetch/bin/wrapper.so", 1);
+		setenv("LD_PRELOAD", "/home/melody/study/projects/trapfetch/wrapper_64.so", 1);
 #else
-		setenv("LD_PRELOAD", "/home/melody/study/projects/trapfetch/bin/wrapper_32.so", 1);
+		setenv("LD_PRELOAD", "/home/melody/study/projects/trapfetch/wrapper_32.so", 1);
 #endif
 
 		printf("getenv(LD_PRELOAD) : %s\n", getenv("LD_PRELOAD"));
@@ -398,7 +423,7 @@ void startup_child(int argc, char **argv)
 	fp_read = create_logfile(argv[1], 'R');
 	fp_candidates = create_logfile(argv[1], 'C');
 	if ((fp_read == NULL) || (fp_candidates == NULL)) {
-		perror("Failed to log file creation")
+		perror("Failed to log file creation");
 		exit(EXIT_FAILURE);
 	}
 

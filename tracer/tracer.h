@@ -25,6 +25,7 @@
 #include <sys/ptrace.h>
 #include <sys/syscall.h>
 
+#define PAGE_SIZE	4096
 #define LOG_PATH		"/home/melody/study/projects/trapfetch/logs/"
 
 #define	OPEN_FLAG		"w"
