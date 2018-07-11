@@ -200,7 +200,6 @@ bool trace(void)
 	void *ret_addr;
 	
 	struct stat fstatus;
-	// struct user_regs_struct regs;
 
 	char buf[512], fname[512];
 
@@ -442,7 +441,7 @@ void startup_child(int argc, char **argv)
 	// examine tracee's current registers.
 	ptrace_getinfo(PTRACE_GETREGS, tracee, &regs);
 
-	/* 
+ 
 	memset(fname, '\0', 512 * sizeof(char));
 	realpath(argv[1], fname);
 	if (stat(fname, &fstatus) < 0) {
@@ -452,20 +451,17 @@ void startup_child(int argc, char **argv)
 
 #if ARCH ==	32
 	regs.RET = 0x2000000;
-	regs.ARGS_5 = 0;
-	regs.ARGS_1	= fstatus.st_size;
 #else
 	regs.RET = 0x400000;
-	regs.ARGS_5 = 0;
-	regs.ARGS_1 = fstatus.st_size;
 #endif
+	regs.ARGS_1 = fstatus.st_size;
+	regs.ARGS_2 = 0x4;
+	regs.ARGS_5 = 0;
 
 	timestamp = get_timestamp();
 
 	if (S_ISREG(fstatus.st_mode))
 		write_mmap_log(&regs, fname, timestamp);
-
-	*/
 
 	kill(tracee, SIGCONT);
 }
