@@ -2,38 +2,17 @@
 #include <string.h>
 #include <fcntl.h>
 #include <stdlib.h>
-#include "analyzer.h"
-
-
-int get_fd(char *path, char *dir, int flag)
-{
-	char fname[512];
-	int fd;
-
-	memset(fname, '\0', 512 * sizeof(char));
-	strcpy(fname, dir);
-	strcat(fname, path);
-
-	if (flag == OPEN_READ) {
-		if ((fd = open(fname, O_RDONLY)) < 0) {
-			perror("open");
-			exit(EXIT_FAILURE);
-		}
-	}
-	else {
-		if ((fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC)) < 0) {
-			perror("open");
-			exit(EXIT_FAILURE);
-		}
-	}
-
-	return fd;
-}
 
 int main(int argc, char **argv)
 {
-	int fd_read, fd_candidates, fd_bp, fd_pf;
+	// int fd_read, fd_candidates, fd_bp, fd_pf;
 
+	if (an_init() < 0) {
+		fprintf(stderr, "failed to init analyzer\n");
+		return -1;
+	}
+
+	
 	/*
 	queue *q;
 	mmap_list *m_list;
@@ -42,10 +21,10 @@ int main(int argc, char **argv)
 	cand_node *c_node;
 	*/
 
-	fd_read = get_fd(argv[1], LOGPATH"/read_", OPEN_READ);
-	fd_candidates = get_fd(argv[1], LOGPATH"/cand_", OPEN_READ);
-	fd_bp = get_fd(argv[1], LOGPATH"/bp_", OPEN_WRITE);
-	fd_pf = get_fd(argv[1], LOGPATH"/pf_", OPEN_WRITE);
+	// fd_read = get_fd(argv[1], LOGPATH"/read_", OPEN_READ);
+	// fd_candidates = get_fd(argv[1], LOGPATH"/cand_", OPEN_READ);
+	// fd_bp = get_fd(argv[1], LOGPATH"/bp_", OPEN_WRITE);
+	// fd_pf = get_fd(argv[1], LOGPATH"/pf_", OPEN_WRITE);
 
 	//q = init_queue();
 	
