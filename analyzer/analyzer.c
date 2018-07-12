@@ -1,23 +1,45 @@
 #include "analyzer.h"
 
-int fd_read;
-int fd_candidates;
+FILE *fp_read;
+FILE *fp_candidates;
 
 struct queue q;
 struct mm_list m;
 
-int an_init(char **argv)
+// an_init prepares to begin to analyze traced data.
+// if it fails, returns true, if not, returns false.
+bool an_init(char **argv)
 {
     // open log files.
-    fd_read = get_fd(argv[1], PATH_READ_LOG, OPEN_READ);
-    fd_candidates = get_fd(argv[1], PATH_CANDIDATE_LOG, OPEN_READ);
+    fp_read = get_fd(argv[1], PATH_READ_LOG, OPEN_READ);
+    fp_candidates = get_fd(argv[1], PATH_CANDIDATE_LOG, OPEN_READ);
 
-    if (fd_read < 0 || fd_candidates < 0) {
-        return -1;
+    if (fp_read == NULL || fp_candidates == NULL) {
+        return true;
     }
 
     // initialize queue.
     queue_init(&q);
 
-    return 0;
+    // initialize mmap list.
+    m.head = NULL;
+    m.tail = NULL;
+
+    return false;
+}
+
+
+bool analyze()
+{
+    char buf[512];
+
+    // read line from read and candidate logs.
+    if (!fgets(buf, sizeof(buf), fp_read)) {
+        // end of analysis.
+        return false;
+    }
+
+    if (buf[0] == 'm') {
+        
+    }    
 }
