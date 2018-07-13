@@ -1,3 +1,6 @@
+#include <sys/ioctl.h>
+#include <sys/fiemap.h>
+
 FILE *get_fd(char *path, char *dir, int flag)
 {
 	char fname[512];
@@ -21,4 +24,45 @@ FILE *get_fd(char *path, char *dir, int flag)
 	}
 
 	return fp;
+}
+
+unsigned int get_logical_blk_addr(char *path) {
+	int fd;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		perror("Failed to open file");
+		return 0;
+	}
+
+	//unsigned int fe_logical_start; // logical bye offset of extent
+	unsigned int fe_physical_start; // physical byte offset of extent
+	//unsigned int fe_length; // the number of bytes in extent
+
+	fiemap = malloc(sizeof (struct fiemap) + (EXTENT_MAX_COUNT * sizeof(struct fiemap_extent)));
+
+	if (!fiemap) {
+		perror("Failed to allocate fiemap buffers");
+		return 0;		
+	}
+
+	fiemap->fm_length = FIEMAP_MAX_OFFSET;
+	fiemap->fm_flags |= FIEMAP_FLAG_SYNC;
+	fiemap->fm_extent_count = EXTENT_MAX_COUNT;
+
+	if (ioctl(fd, FIGETBSZ, &blocksize) < 0) {
+		perror("Failed to get block size");
+		return 0;
+	}
+
+	// get extent information.
+	if (ioctl(fd, FS_IOC_FIEMAP, fiemap) < 0) {
+		//perror("Invalid file")
+		return 0;
+	}
+
+	// Find the extent that contains the current file and return lba of the file.
+	fe_physical_start = fiemap->fm_extents[0].fe_physical;
+
+	return (fe_physical_start / SECTOR_SIZE) + LBN_START;
 }

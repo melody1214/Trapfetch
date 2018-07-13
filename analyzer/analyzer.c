@@ -4,7 +4,7 @@ FILE *fp_read;
 FILE *fp_candidates;
 
 struct queue q;
-struct mm_list m;
+struct mm_list *m;
 
 // an_init prepares to begin to analyze traced data.
 // if it fails, returns true, if not, returns false.
@@ -22,8 +22,8 @@ bool an_init(char **argv)
     queue_init(&q);
 
     // initialize mmap list.
-    m.head = NULL;
-    m.tail = NULL;
+    m->head = NULL;
+    m->tail = NULL;
 
     return false;
 }
@@ -32,6 +32,7 @@ bool an_init(char **argv)
 bool analyze()
 {
     char buf[512];
+    mm_node *mnode;
 
     // read line from read and candidate logs.
     if (!fgets(buf, sizeof(buf), fp_read)) {
@@ -39,7 +40,10 @@ bool analyze()
         return false;
     }
 
-    if (buf[0] == 'm') {
-        
-    }    
+    if ((buf[0] == 'm') && (buf[2] == 'e')) {
+        mnode = new_mmap_node();
+        mnode->md = gen_message_digest(mnode->path);
+
+        insert_mm_list(mm_list, mnode);
+    }
 }

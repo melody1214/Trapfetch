@@ -12,21 +12,9 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
+	while (analyze()) {
 	
-	/*
-	queue *q;
-	mmap_list *m_list;
-	mmap_node *m_node;
-	read_node *r_node;
-	cand_node *c_node;
-	*/
-
-	// fd_read = get_fd(argv[1], LOGPATH"/read_", OPEN_READ);
-	// fd_candidates = get_fd(argv[1], LOGPATH"/cand_", OPEN_READ);
-	// fd_bp = get_fd(argv[1], LOGPATH"/bp_", OPEN_WRITE);
-	// fd_pf = get_fd(argv[1], LOGPATH"/pf_", OPEN_WRITE);
-
-	//q = init_queue();
+	}
 	
 	return 0;
 }

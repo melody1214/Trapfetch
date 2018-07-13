@@ -38,7 +38,12 @@ void queue_init(queue *q)
     }  
 }
 
-int is_full(queue q)
+void enqueue(queue *q)
+{
+    
+}
+
+int is_full(queue *q)
 {
     int full = 0;
 
