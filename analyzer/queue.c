@@ -2,9 +2,9 @@
 
 typedef struct {
     char path[512];
-    long long timestamp;
-    long long offset;
-    long long length;
+    long long ts;
+    long long off;
+    long long len;
     long lba;
     int ino;
 }entry;
@@ -28,9 +28,9 @@ void queue_init(queue *q)
     while (i < QUEUE_MAX) {
         memset(q->ele[i].path, '\0', sizeof(q->ele[i].path));
 
-        q->ele[i].timestamp = 0;
-        q->ele[i].offset = 0;
-        q->ele[i].length = 0;
+        q->ele[i].ts = 0;
+        q->ele[i].off = 0;
+        q->ele[i].len = 0;
         q->ele[i].lba = 0;
         q->ele[i].ino = 0;
 
@@ -38,19 +38,37 @@ void queue_init(queue *q)
     }  
 }
 
-void enqueue(queue *q)
+void enqueue(queue *q, read_node *r)
 {
-    
+    strcpy(q->ele[i].path, r->path);
+
+    q->ele[i].ts = r->ts;
+    q->ele[i].off = r->off;
+    q->ele[i].len = r->len;
+    q->ele[i].lba = r->lba;
+    q->ele[i].ino = r->ino;
+
+    q->count++;
+    q->rear++;
 }
 
-int is_full(queue *q)
+bool is_full(queue *q)
 {
-    int full = 0;
-
     if (q->count == QUEUE_MAX) {
-        full = 1;
+        return true;
     }
 
-    return full;
+    return false;
 }
 
+bool is_burst(queue *q)
+{
+    entry rear = q->ele[q->rear];
+    entry front = q->ele[q->front];
+
+    if (rear.ts - front.ts < BURST_THRESHOLD) {
+        return true;
+    }
+
+    return false;
+}

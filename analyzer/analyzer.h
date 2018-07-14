@@ -3,6 +3,9 @@
 #define	OPEN_READ	0
 #define	OPEN_WRITE	1
 
+#define READ    0
+#define MMAP    1
+
 typedef struct _read_node {
     char path[512];
     long long timestamp;
@@ -11,7 +14,7 @@ typedef struct _read_node {
     long lba;
     int ino;
     struct _read_node *next;
-}
+}read_node;
 
 typedef struct _mm_node {
     char path[512];
@@ -31,6 +34,26 @@ struct mm_list {
     mm_node *tail;
 };
 
+read_node *new_read_node(char *buf, int type)
+{
+    read_node *newnode;
+    char fname[512];
+
+    memset(fname, '\0', sizeof(fname));
+    newnode = malloc(sizeof(read_node));
+
+    if (type == READ) {
+        sscanf(buf, "%*[^,],%[^,],%lld,%lld,%lld", newnode->path, newnode->ts, newnode->off, newnode->len);
+    }
+    else {
+        sscanf(buf, "%*[^,],%*[^,],%[^,],%lld,%lld,%lld,", newnode->path, newnode->ts, newnode->off, newnode->len);        
+    }
+
+    newnode->next = NULL;
+
+    return newnode;
+}
+
 mm_node *new_mmap_node(char *buf)
 {
     mm_node *newnode;
@@ -42,10 +65,25 @@ mm_node *new_mmap_node(char *buf)
     sscanf(buf, "%*[^,]%*[^,]%[^,],%lld,%lld,%lld,%p,%p", newnode->path, newnode->ts, 
     newnode->off, newnode->len, newnode->start_addr, newnode->end_addr);
 
+    newnode->next = NULL;
+
     return newnode;
 }
 
-void insert_mm_list(struct mm_list *l, mm_node *n) {
-    
+void insert_node_into_mm_list(struct mm_list *l, mm_node *n) {
+    mm_node *tmp = l->head;
 
+    if (tmp == NULL) {
+        l->head = n;
+        l->tail = n;
+        return;
+    }
+
+    while (tmp != NULL) {
+       if (tmp->next != NULL) {
+           tmp = tmp->next;
+           continue;
+       } 
+       tmp->next = n;
+    }
 }
