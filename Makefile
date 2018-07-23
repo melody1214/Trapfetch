@@ -1,4 +1,4 @@
-all: wrapper tracer
+all: wrapper tracer test-rdtsc test-sscanf
 CC = gcc
 
 wrapper: wrapper/wrapper.c
@@ -9,5 +9,11 @@ tracer: tracer/tracer.h tracer/tracer.c common/hash.c tracer/main.c
 	$(CC) $^ -lm -g -DARCH=64 -o $@.x86_64
 	$(CC) $^ -lm -g -DARCH=32 -m32 -o $@.i386
 
+test-rdtsc: test/rdtsc.c test/rdtsc.h
+	$(CC) test/rdtsc.c -o test/rdtsc.bin
+
+test-sscanf: test/sscanf.c
+	$(CC) test/sscanf.c -o test/sscanf.bin
+
 clean:
-	@rm -rf *.x86_64 *.i386 *.so
+	@find . \( -type f -name '*.x86_64' -or -name '*.*386' -or -name '*.so' -or -name '*.bin' \) -delete
