@@ -1,5 +1,15 @@
+#include <unistd.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
-#include <sys/fiemap.h>
+#include <sys/types.h>
+#include <linux/fiemap.h>
+#include <linux/fs.h>
+
+#include "analyzer.h"
+
+#define LBN_START 929523712
+#define SECTOR_SIZE 512
+#define EXTENT_MAX_COUNT 512
 
 FILE *get_fd(char *path, char *dir, int flag)
 {
@@ -10,14 +20,18 @@ FILE *get_fd(char *path, char *dir, int flag)
 	strcpy(fname, dir);
 	strcat(fname, path);
 
-	if (flag == OPEN_READ) {
-		if ((fp = fopen(fname, "r")) == NULL) {
+	if (flag == OPEN_READ)
+	{
+		if ((fp = fopen(fname, "r")) == NULL)
+		{
 			perror("fopen");
 			return NULL;
 		}
 	}
-	else {
-		if ((fp = fopen(fname, "w+")) == NULL) {
+	else
+	{
+		if ((fp = fopen(fname, "w+")) == NULL)
+		{
 			perror("fopen");
 			return NULL;
 		}
@@ -26,11 +40,15 @@ FILE *get_fd(char *path, char *dir, int flag)
 	return fp;
 }
 
-unsigned int get_logical_blk_addr(char *path) {
+unsigned int get_logical_blk_addr(char *path)
+{
 	int fd;
+	int blocksize;
+	struct fiemap *fiemap;
 
 	fd = open(path, O_RDONLY);
-	if (fd < 0) {
+	if (fd < 0)
+	{
 		perror("Failed to open file");
 		return 0;
 	}
@@ -39,24 +57,27 @@ unsigned int get_logical_blk_addr(char *path) {
 	unsigned int fe_physical_start; // physical byte offset of extent
 	//unsigned int fe_length; // the number of bytes in extent
 
-	fiemap = malloc(sizeof (struct fiemap) + (EXTENT_MAX_COUNT * sizeof(struct fiemap_extent)));
+	fiemap = malloc(sizeof(struct fiemap) + (EXTENT_MAX_COUNT * sizeof(struct fiemap_extent)));
 
-	if (!fiemap) {
+	if (!fiemap)
+	{
 		perror("Failed to allocate fiemap buffers");
-		return 0;		
+		return 0;
 	}
 
 	fiemap->fm_length = FIEMAP_MAX_OFFSET;
 	fiemap->fm_flags |= FIEMAP_FLAG_SYNC;
 	fiemap->fm_extent_count = EXTENT_MAX_COUNT;
 
-	if (ioctl(fd, FIGETBSZ, &blocksize) < 0) {
+	if (ioctl(fd, FIGETBSZ, &blocksize) < 0)
+	{
 		perror("Failed to get block size");
 		return 0;
 	}
 
 	// get extent information.
-	if (ioctl(fd, FS_IOC_FIEMAP, fiemap) < 0) {
+	if (ioctl(fd, FS_IOC_FIEMAP, fiemap) < 0)
+	{
 		//perror("Invalid file")
 		return 0;
 	}
