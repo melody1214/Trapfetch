@@ -1,4 +1,4 @@
-all: wrapper tracer test-rdtsc test-sscanf
+all: wrapper tracer test-rdtsc test-sscanf test-clock
 CC = gcc
 
 wrapper: wrapper/wrapper.c
@@ -14,6 +14,9 @@ test-rdtsc: test/rdtsc.c test/rdtsc.h
 
 test-sscanf: test/sscanf.c
 	$(CC) test/sscanf.c -o test/sscanf.bin
+
+test-clock: test/clock.c
+	$(CC) test/clock.c -lrt -o test/clock.bin
 
 clean:
 	@find . \( -type f -name '*.x86_64' -or -name '*.*386' -or -name '*.so' -or -name '*.bin' \) -delete
