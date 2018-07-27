@@ -44,9 +44,7 @@ typedef struct _mm_node
     long long ts;
     long long off;
     long long len;
-    long lba;
     unsigned long md;
-    int ino;
     void *start_addr;
     void *end_addr;
     struct _mm_node *next;
@@ -105,12 +103,10 @@ read_node *new_read_node(char *buf, int type)
     memset(fname, '\0', sizeof(fname));
     newnode = malloc(sizeof(read_node));
 
-    if (type == READ)
-    {
+    if (type == READ) {
         sscanf(buf, "%*[^,],%[^,],%lld,%lld,%lld", newnode->path, newnode->ts, newnode->off, newnode->len);
     }
-    else
-    {
+    else {
         sscanf(buf, "%*[^,],%*[^,],%[^,],%lld,%lld,%lld,", newnode->path, newnode->ts, newnode->off, newnode->len);
     }
 
@@ -139,20 +135,19 @@ void insert_node_into_mm_list(mm_list *l, mm_node *n)
 {
     mm_node *tmp = l->head;
 
-    if (tmp == NULL)
-    {
+    if (tmp == NULL) {
         l->head = n;
         l->tail = n;
         return;
     }
 
-    while (tmp != NULL)
-    {
-        if (tmp->next != NULL)
-        {
+    while (tmp != NULL) {
+        if (tmp->next != NULL) {
             tmp = tmp->next;
             continue;
         }
         tmp->next = n;
     }
+
+    l->tail = n;
 }

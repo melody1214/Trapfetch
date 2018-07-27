@@ -41,8 +41,8 @@ bool an_init(char **argv)
 bool analyze()
 {
     char buf[512];
-    mm_node *mnode;
-    read_node *rnode;
+    mm_node *m;
+    read_node *r;
     struct stat st;
 
     // read line from read and candidate logs.
@@ -52,39 +52,39 @@ bool analyze()
         return false;
     }
 
-    if ((buf[0] == 'm') && (buf[2] == 'e'))
-    {
-        // Create mmap node and insert that into mmap list.
-        mnode = new_mmap_node(buf);
-        mnode->md = gen_message_digest(mnode->path);
-        insert_node_into_mm_list(ml, mnode);
+    if (buf[0] == 'm') {
+        if (buf[2] == 'e') {
+            // Create mmap node and insert that into mmap list.
+            m = new_mmap_node(buf);
+            m->md = gen_message_digest(m->path);
+            insert_node_into_mm_list(ml, m);
+        }
 
         // Create read node for prefetching and enqueue.
-        rnode = new_read_node(buf, MMAP);
+        r = new_read_node(buf, MMAP);
     }
-    else if (buf[0] == 'r')
-    {
+    else if (buf[0] == 'r') {
         // Create read node for prefetching and enqueue.
-        rnode = new_read_node(buf, READ);
+        r = new_read_node(buf, READ);
     }
-
-    rnode->lba = get_logical_blk_addr(rnode->path);
 
     // If a file has not logical block address, it will be not queued.
-    if (rnode->lba == 0)
-    {
+    r->lba = get_logical_blk_addr(r->path);
+    if (r->lba == 0) {
+        free(m);
+        free(r);
         exit(EXIT_FAILURE);
     }
 
-    if (stat(rnode->path, &st) < 0)
-    {
-        free(mnode);
-        free(rnode);
-        return true;
+    if (stat(r->path, &st) < 0) {
+        free(m);
+        free(r);
+        perror("stat");
+        exit(EXIT_FAILURE);
     }
 
-    rnode->ino = st.st_ino;
-    enqueue(&q, rnode);
+    r->ino = st.st_ino;
+    enqueue(&q, r);
 
     // Queue is not full.
     if (!is_full())
@@ -95,7 +95,6 @@ bool analyze()
     // The time for fully queueing is less than burst threshold.
     if (is_burst())
     {
-
-        append_to_pf_group_list(&q, pl, IS_BURST);
+        //append_to_pf_group_list(&q, pl, IS_BURST);
     }
 }
