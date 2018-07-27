@@ -31,7 +31,7 @@ bool an_init(char **argv)
     // initialize mmap list.
     ml = init_mm_list();
     // initialize prefetch group list.
-    pl = init_pf_list();
+    pl = init_pf_list(rl);
     // initialize queue.
     queue_init(&q);
 
@@ -52,8 +52,10 @@ bool analyze()
         return false;
     }
 
-    if (buf[0] == 'm') {
-        if (buf[2] == 'e') {
+    if (buf[0] == 'm')
+    {
+        if (buf[2] == 'e')
+        {
             // Create mmap node and insert that into mmap list.
             m = new_mmap_node(buf);
             m->md = gen_message_digest(m->path);
@@ -63,20 +65,23 @@ bool analyze()
         // Create read node for prefetching and enqueue.
         r = new_read_node(buf, MMAP);
     }
-    else if (buf[0] == 'r') {
+    else if (buf[0] == 'r')
+    {
         // Create read node for prefetching and enqueue.
         r = new_read_node(buf, READ);
     }
 
     // If a file has not logical block address, it will be not queued.
     r->lba = get_logical_blk_addr(r->path);
-    if (r->lba == 0) {
+    if (r->lba == 0)
+    {
         free(m);
         free(r);
         exit(EXIT_FAILURE);
     }
 
-    if (stat(r->path, &st) < 0) {
+    if (stat(r->path, &st) < 0)
+    {
         free(m);
         free(r);
         perror("stat");
@@ -95,6 +100,25 @@ bool analyze()
     // The time for fully queueing is less than burst threshold.
     if (is_burst())
     {
-        //append_to_pf_group_list(&q, pl, IS_BURST);
+        while (q.count > 0)
+        {
+            r = new_read_node(NULL, 0);
+            memcpy(r, dequeue(q), sizeof(read_node));
+            insert_read_node_into_read_list(rl, r);
+        }
+
+        if (!is_empty())
+        {
+            perror("is_empty()");
+            exit(EXIT_FAILURE);
+        }
+
+        rl->start_ts = rl->head->ts;
+        rl->end_ts = rl->tail->ts;
+        rl->is_burst = IS_BURST;
+
+        insert_read_list_into_pf_list(pl, rl);
+
+        rl = init_read_list();
     }
 }

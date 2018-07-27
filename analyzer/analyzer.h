@@ -8,8 +8,8 @@
 
 #define IS_BURST 1
 
-#define READ 0
-#define MMAP 1
+#define READ 1
+#define MMAP 2
 
 #define QUEUE_MAX 32
 #define BURST_THRESHOLD 200000000
@@ -29,6 +29,9 @@ typedef struct _read_list
 {
     read_node *head;
     read_node *tail;
+    long long start_ts;
+    long long end_ts;
+    bool is_burst;
     struct _read_list *next;
 } read_list;
 
@@ -85,12 +88,12 @@ mm_list *init_mm_list()
     return newlist;
 }
 
-pf_list *init_pf_list()
+pf_list *init_pf_list(read_list *rl)
 {
     pf_list *newlist = malloc(sizeof(pf_list));
 
-    newlist->head = NULL;
-    newlist->tail = NULL;
+    newlist->head = rl;
+    newlist->tail = rl;
 
     return newlist;
 }
@@ -98,16 +101,18 @@ pf_list *init_pf_list()
 read_node *new_read_node(char *buf, int type)
 {
     read_node *newnode;
-    char fname[512];
-
-    memset(fname, '\0', sizeof(fname));
     newnode = malloc(sizeof(read_node));
 
-    if (type == READ) {
+    switch (type)
+    {
+    case READ:
         sscanf(buf, "%*[^,],%[^,],%lld,%lld,%lld", newnode->path, newnode->ts, newnode->off, newnode->len);
-    }
-    else {
+        break;
+    case MMAP:
         sscanf(buf, "%*[^,],%*[^,],%[^,],%lld,%lld,%lld,", newnode->path, newnode->ts, newnode->off, newnode->len);
+        break;
+    default:
+        break;
     }
 
     newnode->next = NULL;
@@ -135,14 +140,17 @@ void insert_node_into_mm_list(mm_list *l, mm_node *n)
 {
     mm_node *tmp = l->head;
 
-    if (tmp == NULL) {
+    if (tmp == NULL)
+    {
         l->head = n;
         l->tail = n;
         return;
     }
 
-    while (tmp != NULL) {
-        if (tmp->next != NULL) {
+    while (tmp != NULL)
+    {
+        if (tmp->next != NULL)
+        {
             tmp = tmp->next;
             continue;
         }
@@ -150,4 +158,52 @@ void insert_node_into_mm_list(mm_list *l, mm_node *n)
     }
 
     l->tail = n;
+}
+
+void insert_node_into_read_list(read_list *rl, read_node *n)
+{
+    read_node *tmp = rl->head;
+
+    if (tmp == NULL)
+    {
+        rl->head = n;
+        rl->tail = n;
+        return;
+    }
+
+    while (tmp != NULL)
+    {
+        if (tmp->next != NULL)
+        {
+            tmp = tmp->next;
+            continue;
+        }
+        tmp->next = n;
+    }
+
+    rl->tail = n;
+}
+
+void insert_read_list_into_pf_list(pf_list *pl, read_list *rl)
+{
+    read_list *tmp = pl->head;
+
+    if (tmp == NULL)
+    {
+        pl->head = rl;
+        pl->tail = rl;
+        return;
+    }
+
+    while (tmp != NULL)
+    {
+        if (tmp->next != NULL)
+        {
+            tmp = tmp->next;
+            continue;
+        }
+        tmp->next = rl;
+    }
+
+    pl->tail = rl;
 }

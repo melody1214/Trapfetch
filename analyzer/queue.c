@@ -35,7 +35,7 @@ void queue_init(queue *q)
 
 void enqueue(queue *q, read_node *r)
 {
-    q->rear = q->rear % QUEUE_MAX + 1;
+    q->rear = (q->rear + 1) % QUEUE_MAX;
 
     // checkpoint
     memcpy(q->ele[q->rear], r, sizeof(read_node));
@@ -48,12 +48,12 @@ void enqueue(queue *q, read_node *r)
     // q->ele[i].ino = r->ino;
 }
 
-read_node *dequeue(queue *q, read_node *r)
+read_node *dequeue(queue *q)
 {
     read_node *ret = &q->ele[q->front];
 
     q->count--;
-    q->front = q->front % QUEUE_MAX + 1;
+    q->front = (q->front + 1) % QUEUE_MAX;
 
     return ret;
 }
