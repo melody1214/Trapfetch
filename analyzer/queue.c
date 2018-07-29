@@ -1,13 +1,4 @@
-#include "analyzer.h"
-
-// typedef struct {
-//     char path[512];
-//     long long ts;
-//     long long off;
-//     long long len;
-//     long lba;
-//     int ino;
-// }entry;
+#include "queue.h"
 
 void queue_init(queue *q)
 {
@@ -38,7 +29,7 @@ void enqueue(queue *q, read_node *r)
     q->rear = (q->rear + 1) % QUEUE_MAX;
 
     // checkpoint
-    memcpy(q->ele[q->rear], r, sizeof(read_node));
+    memcpy(&q->ele[q->rear], r, sizeof(read_node));
 
     q->count++;
     // q->ele[i].ts = r->ts;
