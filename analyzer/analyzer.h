@@ -1,18 +1,16 @@
 #include <stdio.h>
 #include <stdbool.h>
-
-#define PATH_READ_LOG "/home/melody/study/projects/trapfetch/logs/r."
-#define PATH_CANDIDATE_LOG "/home/melody/study/projects/trapfetch/logs/c."
-#define OPEN_READ 0
-#define OPEN_WRITE 1
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #define IS_BURST 1
 
 #define READ 1
 #define MMAP 2
 
-#define QUEUE_MAX 32
-#define BURST_THRESHOLD 200000000
+int gen_message_digest(char *input);
 
 typedef struct _read_node
 {
@@ -24,6 +22,9 @@ typedef struct _read_node
     int ino;
     struct _read_node *next;
 } read_node;
+
+#ifndef _ANALYZER_HEADER_INCLUDED
+#define _ANALYZER_HEADER_INCLUDED
 
 typedef struct _read_list
 {
@@ -59,17 +60,10 @@ typedef struct _mm_list
     mm_node *tail;
 } mm_list;
 
-typedef struct _queue
-{
-    int front;
-    int rear;
-    int count;
-    read_node ele[QUEUE_MAX];
-} queue;
 
 read_list *init_read_list()
 {
-    read_list *newlist = malloc(sizeof(read_list));
+    read_list *newlist = (read_list *)malloc(sizeof(read_list));
 
     newlist->head = NULL;
     newlist->tail = NULL;
@@ -80,7 +74,7 @@ read_list *init_read_list()
 
 mm_list *init_mm_list()
 {
-    mm_list *newlist = malloc(sizeof(mm_list));
+    mm_list *newlist = (mm_list *)malloc(sizeof(mm_list));
 
     newlist->head = NULL;
     newlist->tail = NULL;
@@ -90,7 +84,7 @@ mm_list *init_mm_list()
 
 pf_list *init_pf_list(read_list *rl)
 {
-    pf_list *newlist = malloc(sizeof(pf_list));
+    pf_list *newlist = (pf_list *)malloc(sizeof(pf_list));
 
     newlist->head = rl;
     newlist->tail = rl;
@@ -101,15 +95,15 @@ pf_list *init_pf_list(read_list *rl)
 read_node *new_read_node(char *buf, int type)
 {
     read_node *newnode;
-    newnode = malloc(sizeof(read_node));
+    newnode = (read_node *)malloc(sizeof(read_node));
 
     switch (type)
     {
     case READ:
-        sscanf(buf, "%*[^,],%[^,],%lld,%lld,%lld", newnode->path, newnode->ts, newnode->off, newnode->len);
+        sscanf(buf, "%*[^,],%[^,],%lld,%lld,%lld", newnode->path, &newnode->ts, &newnode->off, &newnode->len);
         break;
     case MMAP:
-        sscanf(buf, "%*[^,],%*[^,],%[^,],%lld,%lld,%lld,", newnode->path, newnode->ts, newnode->off, newnode->len);
+        sscanf(buf, "%*[^,],%*[^,],%[^,],%lld,%lld,%lld,", newnode->path, &newnode->ts, &newnode->off, &newnode->len);
         break;
     default:
         break;
@@ -122,14 +116,10 @@ read_node *new_read_node(char *buf, int type)
 
 mm_node *new_mmap_node(char *buf)
 {
-    mm_node *newnode;
-    char fname[512];
+    mm_node *newnode = (mm_node *)malloc(sizeof(mm_node));
 
-    memset(fname, '\0', sizeof(fname));
-    newnode = malloc(sizeof(mm_node));
-
-    sscanf(buf, "%*[^,]%*[^,]%[^,],%lld,%lld,%lld,%p,%p", newnode->path, newnode->ts,
-           newnode->off, newnode->len, newnode->start_addr, newnode->end_addr);
+    sscanf(buf, "%*[^,],%*[^,],%[^,],%lld,%lld,%lld,%*[^,],%p,%p", newnode->path, &newnode->ts,
+           &newnode->off, &newnode->len, &newnode->start_addr, &newnode->end_addr);
 
     newnode->next = NULL;
 
@@ -147,16 +137,12 @@ void insert_node_into_mm_list(mm_list *l, mm_node *n)
         return;
     }
 
-    while (tmp != NULL)
+    while (tmp->next != NULL)
     {
-        if (tmp->next != NULL)
-        {
-            tmp = tmp->next;
-            continue;
-        }
-        tmp->next = n;
+        tmp = tmp->next;
     }
 
+    tmp->next = n;
     l->tail = n;
 }
 
@@ -171,16 +157,12 @@ void insert_node_into_read_list(read_list *rl, read_node *n)
         return;
     }
 
-    while (tmp != NULL)
+    while (tmp->next != NULL)
     {
-        if (tmp->next != NULL)
-        {
-            tmp = tmp->next;
-            continue;
-        }
-        tmp->next = n;
+        tmp = tmp->next;
     }
 
+    tmp->next = n;
     rl->tail = n;
 }
 
@@ -195,15 +177,14 @@ void insert_read_list_into_pf_list(pf_list *pl, read_list *rl)
         return;
     }
 
-    while (tmp != NULL)
+    while (tmp->next != NULL)
     {
-        if (tmp->next != NULL)
-        {
-            tmp = tmp->next;
-            continue;
-        }
-        tmp->next = rl;
+        tmp = tmp->next;
     }
 
+    tmp->next = rl;
     pl->tail = rl;
 }
+
+
+#endif /* ANALYZER_HEADER_INCLUDED */

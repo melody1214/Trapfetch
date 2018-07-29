@@ -1,9 +1,6 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <stdlib.h>
-
 #include "analyzer.h"
+#include "queue.h"
+#include "file.h"
 
 FILE *fp_read;
 FILE *fp_candidates;
@@ -44,12 +41,15 @@ bool analyze()
     mm_node *m;
     read_node *r;
     struct stat st;
+   
+    bool is_last = false;
 
     // read line from read and candidate logs.
     if (!fgets(buf, sizeof(buf), fp_read))
     {
         // end of analysis.
-        return false;
+        is_last = true;
+        goto full;
     }
 
     if (buf[0] == 'm')
@@ -92,33 +92,47 @@ bool analyze()
     enqueue(&q, r);
 
     // Queue is not full.
-    if (!is_full())
+    if (!is_full(&q))
     {
         return true;
     }
 
-    // The time for fully queueing is less than burst threshold.
-    if (is_burst())
+full:
+    // Queue is full. Queued data will be inserted to a read list.
+    while (q.count > 0)
     {
-        while (q.count > 0)
-        {
-            r = new_read_node(NULL, 0);
-            memcpy(r, dequeue(q), sizeof(read_node));
-            insert_read_node_into_read_list(rl, r);
-        }
-
-        if (!is_empty())
-        {
-            perror("is_empty()");
-            exit(EXIT_FAILURE);
-        }
-
-        rl->start_ts = rl->head->ts;
-        rl->end_ts = rl->tail->ts;
-        rl->is_burst = IS_BURST;
-
-        insert_read_list_into_pf_list(pl, rl);
-
-        rl = init_read_list();
+        r = new_read_node(NULL, 0);
+        memcpy(r, dequeue(&q), sizeof(read_node));
+        insert_node_into_read_list(rl, r);
     }
+
+    // Queue must have been reset.
+    if (!is_empty(&q))
+    {
+        perror("is_empty()");
+        exit(EXIT_FAILURE);
+    }
+
+    rl->start_ts = rl->head->ts;
+    rl->end_ts = rl->tail->ts;
+
+    // The time for fully queueing is less than burst threshold.
+    if (is_burst(&q)) {
+        rl->is_burst = IS_BURST;
+    }
+    // The time for fully queueing exceeds the threshold.
+    else {
+        rl->is_burst = !IS_BURST;
+    }
+
+    insert_read_list_into_pf_list(pl, rl);
+
+    if (is_last) {
+        return false;
+    }
+
+    rl->next = init_read_list();
+    rl = rl->next;
+
+    return true;
 }
