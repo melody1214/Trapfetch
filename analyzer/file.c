@@ -1,15 +1,4 @@
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/types.h>
-#include <linux/fiemap.h>
-#include <linux/fs.h>
-
-#include "analyzer.h"
-
-#define LBN_START 929523712
-#define SECTOR_SIZE 512
-#define EXTENT_MAX_COUNT 512
+#include "file.h"
 
 FILE *get_fd(char *path, char *dir, int flag)
 {
