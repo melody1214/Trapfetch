@@ -1,13 +1,16 @@
-all: wrapper tracer test-rdtsc test-sscanf test-clock
+all: wrapper tracer analyzer test-rdtsc test-sscanf test-clock
 CC = gcc
 
 wrapper: wrapper/wrapper.c
-	$(CC) $^ -fPIC -shared -ldl -lm -DARCH=64 -o $@.x86_64.so
-	$(CC) $^ -fPIC -shared -ldl -lm -m32 -DARCH=32 -o $@.i386.so
+	$(CC) $^ -Wall -fPIC -shared -ldl -lm -DARCH=64 -o $@.x86_64.so
+	$(CC) $^ -Wall -fPIC -shared -ldl -lm -m32 -DARCH=32 -o $@.i386.so
 
-tracer: tracer/tracer.h tracer/tracer.c common/hash.c tracer/main.c
-	$(CC) $^ -lm -g -DARCH=64 -o $@.x86_64
-	$(CC) $^ -lm -g -DARCH=32 -m32 -o $@.i386
+tracer: tracer/main.c tracer/tracer.h tracer/tracer.c common/hash.c
+	$(CC) $^ -Wall -lm -g -DARCH=64 -o $@.x86_64
+	$(CC) $^ -Wall -lm -g -DARCH=32 -m32 -o $@.i386
+
+analyzer: analyzer/analyzer.h analyzer/analyzer.c analyzer/file.c analyzer/queue.h analyzer/queue.c common/hash.c analyzer/main.c
+	$(CC) $^ -Wall -g -o $@.x86_64
 
 test-rdtsc: test/rdtsc.c test/rdtsc.h
 	$(CC) test/rdtsc.c -o test/rdtsc.bin
