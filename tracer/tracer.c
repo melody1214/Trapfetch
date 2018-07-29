@@ -8,12 +8,12 @@ long long get_timestamp()
 	return (long long)(ts.tv_sec * pow(10, 9) + ts.tv_nsec);
 }
 
-static void write_mmap_log(struct user_regs_struct *regs, char *fname, long long timestamp)
+void write_mmap_log(struct user_regs_struct *regs, char *fname)
 {
 	int md;
 	int prot;
 	char prot_to_char;
-	long long off, len;
+	long long off, len, timestamp;
 	void *mm_start, *mm_end;
 
 	md = hash(fname);
@@ -35,6 +35,7 @@ static void write_mmap_log(struct user_regs_struct *regs, char *fname, long long
 		prot_to_char = 'e';
 	}
 
+	timestamp = get_timestamp();
 	fprintf(fp_read, "m,%c,%s,%lld,%lld,%lld,%d,%p,%p\n", prot_to_char, fname, timestamp, off, len, md, mm_start, mm_end);
 }
 
@@ -53,7 +54,7 @@ int get_filepath(pid_t pid, int fd, char *filename)
 }
 
 // create_logfile generates a log file and returns a pointer of the file.
-static FILE *create_logfile(char *target_name, char log_type)
+FILE *create_logfile(char *target_name, char log_type)
 {
 	FILE *fp;
 	char fname[512];
@@ -138,7 +139,7 @@ pid_t drop_pid(pid_t pid)
 	return -1;
 }
 
-static int ptrace_restart(const unsigned int op, pid_t pid, unsigned int sig)
+int ptrace_restart(const unsigned int op, pid_t pid, unsigned int sig)
 {
 	int err;
 
@@ -157,7 +158,7 @@ static int ptrace_restart(const unsigned int op, pid_t pid, unsigned int sig)
 	return -1;
 }
 
-static int ptrace_seize(pid_t pid, unsigned int options)
+int ptrace_seize(pid_t pid, unsigned int options)
 {
 	if (ptrace(PTRACE_SEIZE, pid, 0L, (unsigned int)options) < 0)
 	{
@@ -174,7 +175,7 @@ static int ptrace_seize(pid_t pid, unsigned int options)
 	return 0;
 }
 
-static int ptrace_getinfo(const unsigned int op, pid_t pid, void *info)
+int ptrace_getinfo(const unsigned int op, pid_t pid, void *info)
 {
 	int err;
 
@@ -202,22 +203,17 @@ static int ptrace_getinfo(const unsigned int op, pid_t pid, void *info)
 bool trace(void)
 {
 	pid_t tracee;
+	int wait_status;
 
 	int wait_errno;
-	int wait_status;
-	int md;
-	long long timestamp;
 	bool stopped;
 
 	unsigned int sig, event;
-	unsigned long eventmsg, off, len;
-	unsigned long long inst;
-
-	void *ret_addr;
+	unsigned long eventmsg;
 
 	struct stat fstatus;
 
-	char buf[512], fname[512];
+	char fname[512];
 
 	tracee = waitpid(-1, &wait_status, __WALL);
 
@@ -328,7 +324,7 @@ bool trace(void)
 				goto restart;
 			}
 
-			if ((int)regs.ARGS_3 & 0x20 == 0x20)
+			if (((int)regs.ARGS_3 & 0x20) == 0x20)
 			{
 				goto restart;
 			}
@@ -337,7 +333,6 @@ bool trace(void)
 			if (insyscall == 0)
 			{
 				insyscall = 1;
-				timestamp = get_timestamp();
 				goto restart;
 			}
 
@@ -364,7 +359,7 @@ bool trace(void)
 			}
 
 			// write log.
-			write_mmap_log(&regs, fname, timestamp);
+			write_mmap_log(&regs, fname);
 		}
 		else
 		{
@@ -412,12 +407,11 @@ void startup_child(int argc, char **argv)
 {
 	pid_t tracee;
 
-	unsigned int wait_status;
+	int wait_status;
 	char fname[512];
 
 	// struct user_regs_struct regs;
 	struct stat fstatus;
-	long long timestamp;
 
 	if ((tracee = fork()) < 0)
 	{
@@ -510,10 +504,8 @@ void startup_child(int argc, char **argv)
 	regs.ARGS_2 = 0x4;
 	regs.ARGS_5 = 0;
 
-	timestamp = get_timestamp();
-
 	if (S_ISREG(fstatus.st_mode))
-		write_mmap_log(&regs, fname, timestamp);
+		write_mmap_log(&regs, fname);
 
 	kill(tracee, SIGCONT);
 }
