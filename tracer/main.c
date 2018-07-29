@@ -1,12 +1,11 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-void startup_child(int argc, char **argv);
-bool trace(void);
+extern void startup_child(int argc, char **argv);
+extern bool trace(void);
 
 int main(int argc, char *argv[])
 {
-	char path[512];
 	startup_child(argc, argv);
 
 	while (trace());
