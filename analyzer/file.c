@@ -39,6 +39,7 @@ unsigned int get_logical_blk_addr(char *path)
 	if (fd < 0)
 	{
 		perror("Failed to open file");
+		printf("path : %s\n", path);
 		return 0;
 	}
 
@@ -51,6 +52,7 @@ unsigned int get_logical_blk_addr(char *path)
 	if (!fiemap)
 	{
 		perror("Failed to allocate fiemap buffers");
+		close(fd);
 		return 0;
 	}
 
@@ -61,6 +63,7 @@ unsigned int get_logical_blk_addr(char *path)
 	if (ioctl(fd, FIGETBSZ, &blocksize) < 0)
 	{
 		perror("Failed to get block size");
+		close(fd);
 		return 0;
 	}
 
@@ -68,11 +71,14 @@ unsigned int get_logical_blk_addr(char *path)
 	if (ioctl(fd, FS_IOC_FIEMAP, fiemap) < 0)
 	{
 		//perror("Invalid file")
+		close(fd);
 		return 0;
 	}
 
 	// Find the extent that contains the current file and return lba of the file.
 	fe_physical_start = fiemap->fm_extents[0].fe_physical;
+
+	close(fd);
 
 	return (fe_physical_start / SECTOR_SIZE) + LBN_START;
 }
