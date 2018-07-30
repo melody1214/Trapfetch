@@ -82,12 +82,12 @@ mm_list *init_mm_list()
     return newlist;
 }
 
-pf_list *init_pf_list(read_list *rl)
+pf_list *init_pf_list()
 {
     pf_list *newlist = (pf_list *)malloc(sizeof(pf_list));
 
-    newlist->head = rl;
-    newlist->tail = rl;
+    newlist->head = NULL;
+    newlist->tail = NULL;
 
     return newlist;
 }

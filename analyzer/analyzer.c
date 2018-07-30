@@ -28,7 +28,7 @@ bool an_init(char **argv)
     // initialize mmap list.
     ml = init_mm_list();
     // initialize prefetch group list.
-    pl = init_pf_list(rl);
+    pl = init_pf_list();
     // initialize queue.
     queue_init(&q);
 
@@ -75,17 +75,13 @@ bool analyze()
     r->lba = get_logical_blk_addr(r->path);
     if (r->lba == 0)
     {
-        free(m);
-        free(r);
-        exit(EXIT_FAILURE);
+        return true;
     }
 
     if (stat(r->path, &st) < 0)
     {
-        free(m);
-        free(r);
         perror("stat");
-        exit(EXIT_FAILURE);
+        return true;
     }
 
     r->ino = st.st_ino;
@@ -125,14 +121,50 @@ full:
         rl->is_burst = !IS_BURST;
     }
 
-    insert_read_list_into_pf_list(pl, rl);
-
     if (is_last) {
+        pl->tail = rl;
         return false;
     }
+
+    insert_read_list_into_pf_list(pl, rl);
 
     rl->next = init_read_list();
     rl = rl->next;
 
     return true;
 }
+
+void reordering_pf_list()
+{
+   read_list *pf = pl->head;
+   read_list *read = pl->head;
+
+   while (read != NULL) {
+       if (read->next == NULL) {
+           pl->tail = pf;
+           return;
+       }
+
+       if (read->is_burst == IS_BURST) {
+           if (read->next->is_burst != IS_BURST) {
+               pf->end_ts = read->end_ts;
+               pf->tail = read->tail;
+           }
+           else {
+               read->tail->next = read->next->head;
+               pf->end_ts = read->next->end_ts;
+               pf->tail = read->next->tail;
+           }
+       }
+
+       if (read->is_burst != IS_BURST) {
+            if (read->next->is_burst == IS_BURST) {
+                pf->next = read->next;
+                pf = pf->next;
+            }
+       }
+
+       read = read->next;
+   }
+}
+
