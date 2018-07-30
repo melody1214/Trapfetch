@@ -139,9 +139,12 @@ void reordering_pf_list()
    read_list *pf = pl->head;
    read_list *read = pl->head;
 
+   read_list *node_to_free = NULL;
+
    while (read != NULL) {
        if (read->next == NULL) {
            pl->tail = pf;
+           pf->next = NULL;
            return;
        }
 
@@ -149,18 +152,33 @@ void reordering_pf_list()
            if (read->next->is_burst != IS_BURST) {
                pf->end_ts = read->end_ts;
                pf->tail = read->tail;
+               read = read->next;
+
+               while (pf->next != read) {
+                   node_to_free = pf->next;
+                   pf->next = pf->next->next;
+                   free(node_to_free);
+               }
+               continue;
            }
            else {
-               read->tail->next = read->next->head;
-               pf->end_ts = read->next->end_ts;
+               pf->tail->next = read->next->head;
                pf->tail = read->next->tail;
            }
        }
 
        if (read->is_burst != IS_BURST) {
             if (read->next->is_burst == IS_BURST) {
-                pf->next = read->next;
+                read = read->next;
+
+                while (pf->next != read) {
+                    node_to_free = pf->next;
+                    pf->next = pf->next->next;
+                    free(node_to_free);
+                }
+
                 pf = pf->next;
+                continue;
             }
        }
 
