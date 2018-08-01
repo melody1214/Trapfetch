@@ -172,3 +172,116 @@ void reordering_pf_list() {
     read = read->next;
   }
 }
+
+void swap(read_node *a, read_node *b) {
+  read_node *tmp = (read_node *)malloc(sizeof(read_node));
+
+  memcpy(tmp, b, sizeof(read_node));
+  memcpy(b, a, sizeof(read_node));
+  memcpy(a, tmp, sizeof(read_node));
+
+  a->next = b;
+  b->next = tmp->next;
+
+  free(tmp);
+}
+
+void reordering_read_list() {
+  read_list *rl = pl->head;
+  read_node *n = rl->head;
+
+  int swapped;
+
+  while (rl != NULL) {
+    do {
+      swapped = 0;
+      n = rl->head;
+
+      while (n->next != NULL) {
+        if (n->lba > n->next->lba) {
+          swap(n, n->next);
+          swapped = 1;
+        }
+        n = n->next;
+      }
+    } while (swapped);
+    rl = rl->next;
+    printf("reordering read_list...\n");
+  }
+}
+
+bool merge(read_list *rl, read_node *a, read_node *b) {
+  long long off_to_len_a = a->off + a->len;
+  long long off_to_len_b = b->off + b->len;
+
+  if (off_to_len_a < b->off) {
+    return false;
+  }
+
+  if (a->off > off_to_len_b) {
+    return false;
+  }
+
+  if (SUBSET(b, a)) {
+    a->off = b->off;
+    a->len = b->len;
+  } else if (EXPAND(a, b)) {
+    a->len = (b->off - a->off) + off_to_len_b;
+  } else if (EXPAND(b, a)) {
+    a->off = b->off;
+    a->len = (a->off - b->off) + off_to_len_a;
+  }
+
+  if (b->next == NULL) {
+    a->next = NULL;
+    rl->tail = a;
+  } else {
+    a->next = b->next;
+  }
+  free(b);
+  return true;
+}
+
+void merging_read_list() {
+  read_list *rl = pl->head;
+  read_node *n = rl->head;
+
+  int merged;
+
+  while (rl != NULL) {
+    do {
+      merged = 0;
+      n = rl->head;
+
+      while (n->next != NULL) {
+        if (n->lba == n->next->lba) {
+          if (merge(rl, n, n->next) == true) {
+            merged = 1;
+          }
+        }
+        if (n->next == NULL) {
+          break;
+        }
+        n = n->next;
+      }
+    } while (merged);
+    rl = rl->next;
+    printf("merging read_list...\n");
+  }
+}
+
+void generate_prefetch_data() {
+  char buf[512];
+  void *ret_addr;
+  long long ts;
+
+  read_list *rl = pl->head;
+
+  if (rl->next != NULL) {
+  }
+
+  // read line from candidate logs.
+  while (fgets(buf, sizeof(buf), fp_candidates)) {
+    sscanf(buf, "%p,%lld", &ret_addr, &ts);
+  }
+}
