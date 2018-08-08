@@ -30,12 +30,21 @@ typedef struct _read_node {
 #ifndef _ANALYZER_HEADER_INCLUDED
 #define _ANALYZER_HEADER_INCLUDED
 
+typedef struct _meta_node {
+  read_node *ptr;
+  struct _meta_node *next;
+} meta_node;
+
 typedef struct _read_list {
   read_node *head;
   read_node *tail;
+  meta_node *meta_head;
+  meta_node *meta_tail;
   long long start_ts;
   long long end_ts;
   bool is_burst;
+  void *bp_offset;
+  unsigned long md;
   struct _read_list *next;
 } read_list;
 
@@ -67,6 +76,11 @@ read_list *init_read_list() {
   newlist->tail = NULL;
   newlist->next = NULL;
 
+  newlist->bp_offset = NULL;
+  newlist->md = 0;
+  newlist->meta_head = NULL;
+  newlist->meta_tail = NULL;
+
   return newlist;
 }
 
@@ -86,6 +100,16 @@ pf_list *init_pf_list() {
   newlist->tail = NULL;
 
   return newlist;
+}
+
+meta_node *new_meta_node() {
+  meta_node *newnode;
+  newnode = (meta_node *)malloc(sizeof(meta_node));
+
+  newnode->ptr = NULL;
+  newnode->next = NULL;
+
+  return newnode;
 }
 
 read_node *new_read_node(char *buf, int type) {
@@ -137,6 +161,54 @@ void insert_node_into_mm_list(mm_list *l, mm_node *n) {
 
   tmp->next = n;
   l->tail = n;
+}
+
+void insert_meta_node_into_read_list(meta_node *mn, read_list *rl) {
+  meta_node *n = rl->meta_head;
+  meta_node *tmp = NULL;
+
+  if (n == NULL) {
+    rl->meta_head = mn;
+    rl->meta_tail = mn;
+    return;
+  }
+
+  while (n != NULL) {
+    if (n->ptr->ino == mn->ptr->ino) {
+      return;
+    }
+
+    if (n->ptr->ino < mn->ptr->ino) {
+      mn->next = n->next;
+      n->next = mn;
+
+      if (rl->meta_tail == n) {
+        rl->meta_tail = mn;
+      }
+      return;
+    }
+
+    if (mn->ptr->ino < n->ptr->ino) {
+      tmp = (meta_node *)malloc(sizeof(meta_node));
+
+      tmp->ptr = mn->ptr;
+
+      mn->ptr = n->ptr;
+      mn->next = n->next;
+
+      n->ptr = tmp->ptr;
+      n->next = mn;
+
+      free(tmp);
+
+      if (rl->meta_tail == n) {
+        rl->meta_tail = mn;
+      }
+      return;
+    }
+
+    n = n->next;
+  }
 }
 
 void insert_node_into_read_list(read_list *rl, read_node *n) {

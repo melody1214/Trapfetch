@@ -122,6 +122,10 @@ full:
 }
 
 void reordering_pf_list() {
+  read_list *pf;
+  read_list *read;
+  read_list *node_to_free;
+
   if (pl->head == NULL) {
     perror("reordering");
     exit(EXIT_FAILURE);
@@ -132,9 +136,9 @@ void reordering_pf_list() {
     exit(EXIT_FAILURE);
   }
 
-  read_list *pf = pl->head;
-  read_list *read = pl->head->next;
-  read_list *node_to_free = NULL;
+  pf = pl->head;
+  read = pl->head->next;
+  node_to_free = NULL;
 
   while (read != NULL) {
     if (pf->is_burst != IS_BURST) {
@@ -187,15 +191,15 @@ void swap(read_node *a, read_node *b) {
 }
 
 void reordering_read_list() {
-  read_list *rl = pl->head;
-  read_node *n = rl->head;
-
   int swapped;
+  meta_node *mnode;
+  read_list *rlist = pl->head;
+  read_node *n = rlist->head;
 
-  while (rl != NULL) {
+  while (rlist != NULL) {
     do {
       swapped = 0;
-      n = rl->head;
+      n = rlist->head;
 
       while (n->next != NULL) {
         if (n->lba > n->next->lba) {
@@ -205,12 +209,22 @@ void reordering_read_list() {
         n = n->next;
       }
     } while (swapped);
-    rl = rl->next;
+
+    n = rlist->head;
+    do {
+      mnode = new_meta_node();
+      mnode->ptr = n;
+      insert_meta_node_into_read_list(mnode, rlist);
+
+      n = n->next;
+    } while (n != NULL);
+
+    rlist = rlist->next;
     printf("reordering read_list...\n");
   }
 }
 
-bool merge(read_list *rl, read_node *a, read_node *b) {
+bool merge(read_list *rlist, read_node *a, read_node *b) {
   long long off_to_len_a = a->off + a->len;
   long long off_to_len_b = b->off + b->len;
 
@@ -234,7 +248,7 @@ bool merge(read_list *rl, read_node *a, read_node *b) {
 
   if (b->next == NULL) {
     a->next = NULL;
-    rl->tail = a;
+    rlist->tail = a;
   } else {
     a->next = b->next;
   }
@@ -243,19 +257,19 @@ bool merge(read_list *rl, read_node *a, read_node *b) {
 }
 
 void merging_read_list() {
-  read_list *rl = pl->head;
-  read_node *n = rl->head;
+  read_list *rlist = pl->head;
+  read_node *n = rlist->head;
 
   int merged;
 
-  while (rl != NULL) {
+  while (rlist != NULL) {
     do {
       merged = 0;
-      n = rl->head;
+      n = rlist->head;
 
       while (n->next != NULL) {
         if (n->lba == n->next->lba) {
-          if (merge(rl, n, n->next) == true) {
+          if (merge(rlist, n, n->next) == true) {
             merged = 1;
           }
         }
@@ -265,23 +279,110 @@ void merging_read_list() {
         n = n->next;
       }
     } while (merged);
-    rl = rl->next;
+    rlist = rlist->next;
     printf("merging read_list...\n");
   }
 }
 
-void generate_prefetch_data() {
+void set_trigger() {
   char buf[512];
   void *ret_addr;
   long long ts;
+  long long ts_idle_begin;
+  long long ts_idle_end;
+  mm_node *mnode;
 
-  read_list *rl = pl->head;
+  read_list *rlist = pl->head;
 
-  if (rl->next != NULL) {
+  while (rlist->next != NULL) {
+    ts_idle_begin = rlist->end_ts;
+    ts_idle_end = rlist->next->start_ts;
+
+    while (fgets(buf, sizeof(buf), fp_candidates)) {
+      sscanf(buf, "%p,%lld", &ret_addr, &ts);
+
+      if (ts < ts_idle_begin) {
+        continue;
+      }
+
+      if (ts > ts_idle_end) {
+        break;
+      }
+
+      if (rlist->next->bp_offset != NULL) {
+        break;
+      }
+
+      mnode = ml->head;
+
+      while (mnode != NULL) {
+        if (mnode->ts > ts) {
+          break;
+        }
+
+        if (mnode->ts > ts_idle_end) {
+          break;
+        }
+
+        if ((mnode->start_addr <= ret_addr) && (mnode->end_addr >= ret_addr)) {
+          rlist->next->md = mnode->md;
+          rlist->next->bp_offset =
+              (void *)((long long)ret_addr - (long long)mnode->start_addr);
+          break;
+        }
+
+        mnode = mnode->next;
+      }
+    }
+
+    rlist = rlist->next;
+  }
+}
+
+void generate_prefetch_data(char **argv) {
+  FILE *fp_bp;
+  FILE *fp_pf;
+  read_node *rnode;
+  meta_node *mnode;
+
+  read_list *rlist = pl->head;
+
+  fp_bp = get_fd(argv[1], PATH_BP, OPEN_WRITE);
+  fp_pf = get_fd(argv[1], PATH_PF, OPEN_WRITE);
+
+  while (rlist != NULL) {
+    mnode = rlist->meta_head;
+    rnode = rlist->head;
+
+    if (rlist == pl->head) {
+      fprintf(fp_bp, "%ld,0\n", rlist->md);
+      while (mnode != NULL) {
+        fprintf(fp_pf, "%ld,0,%s,0,0,0,0\n", rlist->md, mnode->ptr->path);
+        mnode = mnode->next;
+      }
+      while (rnode != NULL) {
+        fprintf(fp_pf, "%ld,0,%s,%lld,%lld,%ld,1\n", rlist->md, rnode->path,
+                rnode->off, rnode->len, rnode->lba);
+        rnode = rnode->next;
+      }
+    } else {
+      fprintf(fp_bp, "%ld,%p", rlist->md, rlist->bp_offset);
+      while (mnode != NULL) {
+        fprintf(fp_pf, "%ld,%p,%s,0,0,0,0\n", rlist->md, rlist->bp_offset,
+                mnode->ptr->path);
+        mnode = mnode->next;
+      }
+      while (rnode != NULL) {
+        fprintf(fp_pf, "%ld,%p,%s,%lld,%lld,%ld,1\n", rlist->md,
+                rlist->bp_offset, rnode->path, rnode->off, rnode->len,
+                rnode->lba);
+        rnode = rnode->next;
+      }
+    }
+
+    rlist = rlist->next;
   }
 
-  // read line from candidate logs.
-  while (fgets(buf, sizeof(buf), fp_candidates)) {
-    sscanf(buf, "%p,%lld", &ret_addr, &ts);
-  }
+  fclose(fp_bp);
+  fclose(fp_pf);
 }
