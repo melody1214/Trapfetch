@@ -87,6 +87,7 @@ full:
   while (q.count > 0) {
     r = new_read_node(NULL, 0);
     memcpy(r, dequeue(&q), sizeof(read_node));
+
     insert_node_into_read_list(rl, r);
   }
 
@@ -192,7 +193,6 @@ void swap(read_node *a, read_node *b) {
 
 void reordering_read_list() {
   int swapped;
-  meta_node *mnode;
   read_list *rlist = pl->head;
   read_node *n = rlist->head;
 
@@ -205,19 +205,15 @@ void reordering_read_list() {
         if (n->lba > n->next->lba) {
           swap(n, n->next);
           swapped = 1;
+        } else if (n->lba == n->next->lba) {
+          if (n->off > n->next->off) {
+            swap(n, n->next);
+            swapped = 1;
+          }
         }
         n = n->next;
       }
     } while (swapped);
-
-    n = rlist->head;
-    do {
-      mnode = new_meta_node();
-      mnode->ptr = n;
-      insert_meta_node_into_read_list(mnode, rlist);
-
-      n = n->next;
-    } while (n != NULL);
 
     rlist = rlist->next;
     printf("reordering read_list...\n");
@@ -225,14 +221,11 @@ void reordering_read_list() {
 }
 
 bool merge(read_list *rlist, read_node *a, read_node *b) {
-  long long off_to_len_a = a->off + a->len;
-  long long off_to_len_b = b->off + b->len;
-
-  if (off_to_len_a < b->off) {
+  if (OFFTOLEN(a) < b->off) {
     return false;
   }
 
-  if (a->off > off_to_len_b) {
+  if (a->off > OFFTOLEN(b)) {
     return false;
   }
 
@@ -240,10 +233,10 @@ bool merge(read_list *rlist, read_node *a, read_node *b) {
     a->off = b->off;
     a->len = b->len;
   } else if (EXPAND(a, b)) {
-    a->len = (b->off - a->off) + off_to_len_b;
+    a->len = (b->off - a->off) + OFFTOLEN(b);
   } else if (EXPAND(b, a)) {
     a->off = b->off;
-    a->len = (a->off - b->off) + off_to_len_a;
+    a->len = (a->off - b->off) + OFFTOLEN(a);
   }
 
   if (b->next == NULL) {
@@ -281,6 +274,23 @@ void merging_read_list() {
     } while (merged);
     rlist = rlist->next;
     printf("merging read_list...\n");
+  }
+}
+
+void generate_meta_list() {
+  read_list *rlist = pl->head;
+  read_node *n;
+  meta_node *m = NULL;
+
+  while (rlist != NULL) {
+    n = rlist->head;
+    while (n != NULL) {
+      m = new_meta_node(n);
+      insert_meta_node_into_read_list(rlist, m);
+
+      n = n->next;
+    }
+    rlist = rlist->next;
   }
 }
 
@@ -366,7 +376,7 @@ void generate_prefetch_data(char **argv) {
         rnode = rnode->next;
       }
     } else {
-      fprintf(fp_bp, "%ld,%p", rlist->md, rlist->bp_offset);
+      fprintf(fp_bp, "%ld,%p\n", rlist->md, rlist->bp_offset);
       while (mnode != NULL) {
         fprintf(fp_pf, "%ld,%p,%s,0,0,0,0\n", rlist->md, rlist->bp_offset,
                 mnode->ptr->path);

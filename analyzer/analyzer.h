@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -10,10 +11,12 @@
 #define READ 1
 #define MMAP 2
 
-#define SUBSET(a, b) ((b)->off >= (a)->off) && (off_to_len_b <= off_to_len_a)
-#define EXPAND(a, b)                                      \
-  ((b)->off >= (a)->off) && ((b)->off <= off_to_len_a) && \
-      off_to_len_b > off_to_len_a
+#define OFFTOLEN(n) (n)->off + (n)->len + 1
+
+#define SUBSET(a, b) ((b)->off >= (a)->off) && ((OFFTOLEN(b)) <= (OFFTOLEN(a)))
+#define EXPAND(a, b)                                     \
+  ((b)->off >= (a)->off) && ((b)->off <= OFFTOLEN(a)) && \
+      OFFTOLEN(b) > OFFTOLEN(a)
 
 int gen_message_digest(char *input);
 
@@ -102,11 +105,12 @@ pf_list *init_pf_list() {
   return newlist;
 }
 
-meta_node *new_meta_node() {
+meta_node *new_meta_node(read_node *n) {
   meta_node *newnode;
+
   newnode = (meta_node *)malloc(sizeof(meta_node));
 
-  newnode->ptr = NULL;
+  newnode->ptr = n;
   newnode->next = NULL;
 
   return newnode;
@@ -163,51 +167,58 @@ void insert_node_into_mm_list(mm_list *l, mm_node *n) {
   l->tail = n;
 }
 
-void insert_meta_node_into_read_list(meta_node *mn, read_list *rl) {
+void insert_meta_node_into_read_list(read_list *rl, meta_node *i) {
   meta_node *n = rl->meta_head;
-  meta_node *tmp = NULL;
+  meta_node *tmp;
 
   if (n == NULL) {
-    rl->meta_head = mn;
-    rl->meta_tail = mn;
+    rl->meta_head = i;
+    rl->meta_tail = i;
     return;
   }
 
-  while (n != NULL) {
-    if (n->ptr->ino == mn->ptr->ino) {
+  while (n->next != NULL) {
+    if (n->ptr->ino < i->ptr->ino) {
+      n = n->next;
+      continue;
+    }
+
+    if (n->ptr->ino == i->ptr->ino) {
+      free(i);
       return;
     }
 
-    if (n->ptr->ino < mn->ptr->ino) {
-      mn->next = n->next;
-      n->next = mn;
+    if (n->ptr->ino > i->ptr->ino) {
+      break;
+    }
+  }
 
-      if (rl->meta_tail == n) {
-        rl->meta_tail = mn;
-      }
-      return;
+  if (n->ptr->ino < i->ptr->ino) {
+    if (n->next == NULL) {
+      rl->meta_tail = i;
+    }
+    n->next = i;
+    return;
+  }
+
+  if (n->ptr->ino == i->ptr->ino) {
+    free(i);
+    return;
+  }
+
+  if (n->ptr->ino > i->ptr->ino) {
+    tmp = (meta_node *)malloc(sizeof(meta_node));
+
+    memcpy(tmp, n, sizeof(meta_node));
+    memcpy(n, i, sizeof(meta_node));
+
+    n->next = tmp;
+
+    if (tmp->next == NULL) {
+      rl->meta_tail = tmp;
     }
 
-    if (mn->ptr->ino < n->ptr->ino) {
-      tmp = (meta_node *)malloc(sizeof(meta_node));
-
-      tmp->ptr = mn->ptr;
-
-      mn->ptr = n->ptr;
-      mn->next = n->next;
-
-      n->ptr = tmp->ptr;
-      n->next = mn;
-
-      free(tmp);
-
-      if (rl->meta_tail == n) {
-        rl->meta_tail = mn;
-      }
-      return;
-    }
-
-    n = n->next;
+    free(i);
   }
 }
 

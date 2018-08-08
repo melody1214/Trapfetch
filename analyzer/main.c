@@ -7,6 +7,7 @@ extern bool analyze();
 extern void reordering_pf_list();
 extern void reordering_read_list();
 extern void merging_read_list();
+extern void generate_meta_list();
 extern void set_trigger();
 extern void generate_prefetch_data(char **argv);
 
@@ -24,9 +25,13 @@ int main(int argc, char **argv) {
 
   reordering_pf_list();
 
+  merging_read_list();
+
   reordering_read_list();
 
   merging_read_list();
+
+  generate_meta_list();
 
   set_trigger();
 
