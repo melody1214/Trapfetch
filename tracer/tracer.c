@@ -1,11 +1,13 @@
 #include "tracer.h"
 
+#ifdef MEASURE_OVERHEAD
 extern int num_of_syscall;
 
 void sig_handler(int signo) {
   system("cat /proc/uptime");
   printf("\nnum of syscalls : %d\n", num_of_syscall);
 }
+#endif
 
 long long get_timestamp() {
   struct timespec ts;
@@ -198,11 +200,13 @@ bool trace(void) {
 
     if (wait_errno == EINTR) return true;
     if (nprocs == 0 && wait_errno == ECHILD) {
+#ifdef MEASURE_OVERHEAD
       printf("num of syscall : %d\n", num_of_syscall);
+#endif
       return false;
     }
 
-    printf("nprocs : %d, errno : %d\n", nprocs, wait_errno);
+    // printf("nprocs : %d, errno : %d\n", nprocs, wait_errno);
     exit(EXIT_FAILURE);
   }
 
@@ -263,7 +267,9 @@ bool trace(void) {
       if ((sig == SIGTRAP) || (sig == SYSCALL_STOP)) {
         ptrace_getinfo(PTRACE_GETREGS, tracee, &regs);
 
+#ifdef MEASURE_OVERHEAD
         num_of_syscall++;
+#endif
 
 #if ARCH == 32
         if (regs.ORIG_AX != SYS_mmap2) {
@@ -403,10 +409,12 @@ void startup_child(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
+#ifdef MEASURE_OVERHEAD
   if (signal(SIGINT, sig_handler) == SIG_ERR) {
     printf("\n can't catch SIGINT\n");
     exit(EXIT_FAILURE);
   }
+#endif
 
   // Create log files.
   // 'R' means read, and 'C' means candidate.
