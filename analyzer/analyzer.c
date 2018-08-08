@@ -304,6 +304,9 @@ void set_trigger() {
 
   read_list *rlist = pl->head;
 
+  rlist->bp_offset = 0;
+  rlist->md = 0;
+
   while (rlist->next != NULL) {
     ts_idle_begin = rlist->end_ts;
     ts_idle_end = rlist->next->start_ts;
@@ -376,7 +379,6 @@ void generate_prefetch_data(char **argv) {
         rnode = rnode->next;
       }
     } else {
-      fprintf(fp_bp, "%ld,%p\n", rlist->md, rlist->bp_offset);
       while (mnode != NULL) {
         fprintf(fp_pf, "%ld,%p,%s,0,0,0,0\n", rlist->md, rlist->bp_offset,
                 mnode->ptr->path);
@@ -389,7 +391,20 @@ void generate_prefetch_data(char **argv) {
         rnode = rnode->next;
       }
     }
-
+    if (rlist->next != NULL) {
+      if (rlist->next->bp_offset == NULL) {
+        if (rlist == pl->head) {
+          rlist->next->md = 0;
+          rlist->next->bp_offset = 0;
+        }
+        rlist->next->md = rlist->md;
+        rlist->next->bp_offset = rlist->bp_offset;
+      } else {
+        if (rlist->bp_offset != NULL) {
+          fprintf(fp_bp, "%ld,%p\n", rlist->md, rlist->bp_offset);
+        }
+      }
+    }
     rlist = rlist->next;
   }
 
