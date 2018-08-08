@@ -5,7 +5,7 @@ PROGRAM = wrapper
 SOURCES = wrapper.c
 
 $(PROGRAM) : $(INCLUDES) $(SOURCES)
-	$(CC) $^ $(CFLAGS_64) -o $@.x86.64.so
+	$(CC) $^ $(CFLAGS_64) -o $@.x86_64.so
 	$(CC) $^ $(CFLAGS_32) -o $@.i386.so
 
 clean:
