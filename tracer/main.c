@@ -4,8 +4,12 @@
 extern void startup_child(int argc, char **argv);
 extern bool trace(void);
 
+int num_of_syscall;
+
 int main(int argc, char *argv[])
 {
+	num_of_syscall = 0;
+
 	startup_child(argc, argv);
 
 	while (trace());
