@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,8 +13,9 @@
 #define PATH_BP "/home/melody/study/projects/trapfetch/logs/pf_"
 #define PATH_PF "/home/melody/study/projects/trapfetch/logs/bp_"
 
-#define TABSIZE 256
+#define PIDTABSIZE 256
 #define MAX_READAHEAD 131072
+#define BUFSIZE 512
 
 // for x86_64
 #if ARCH == 64
@@ -31,36 +33,36 @@
 #define TARGET_ADDR regs.eax + bp.offset
 #endif
 
-unsigned int ptrace_options = PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK |
-                              PTRACE_O_TRACEEXEC | PTRACE_O_TRACEVFORK |
-                              PTRACE_O_TRACECLONE | PTRACE_O_MMAPTRACE;
+#define PT_OPTIONS                                                  \
+  PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK | PTRACE_O_TRACEEXEC | \
+      PTRACE_O_TRACEVFORK | PTRACE_O_TRACECLONE | PTRACE_O_MMAPTRACE
 
-typedef struct _f_node {
-  char* filepath;
+typedef struct _pf_node {
+  char filepath[512];
   long long offset;
   long long len;
   int flag;
-  struct _f_node* next;
-} f_node;
+  struct _pf_node* next;
+} pf_node;
 
-typedef struct _f_list {
+typedef struct _pf_list {
   long md;
   void* bp_offset;
   int is_prefetched;
-  f_node* head;
-  f_node* tail;
-  struct _f_list* next;
-} f_list;
+  pf_node* head;
+  pf_node* tail;
+  struct _pf_list* next;
+} pf_list;
 
-typedef struct _fl_list {
-  f_list* head;
-  f_list* tail;
-} fl_list;
+typedef struct pf_group_list {
+  pf_list* head;
+  pf_list* tail;
+} pgroup_list;
 
-f_node* newFNode(char* filepath, long long offset, long long len, int flag) {
-  f_node* newnode = (f_node*)malloc(sizeof(f_node));
-  newnode->filepath = (char*)malloc(strlen(filepath) + 1);
-  strncpy(newnode->filepath, filepath, strlen(filepath) + 1);
+pf_node* new_pf_node(char* filepath, long long offset, long long len,
+                     int flag) {
+  pf_node* newnode = (pf_node*)malloc(sizeof(pf_node));
+  strncpy(newnode->filepath, filepath, sizeof(newnode->filepath));
   newnode->offset = offset;
   newnode->len = len;
   newnode->flag = flag;
@@ -68,8 +70,8 @@ f_node* newFNode(char* filepath, long long offset, long long len, int flag) {
   return newnode;
 }
 
-f_list* newFList(long md, void* bp_offset) {
-  f_list* newlist = (f_list*)malloc(sizeof(f_list));
+pf_list* new_pf_list(long md, void* bp_offset) {
+  pf_list* newlist = (pf_list*)malloc(sizeof(pf_list));
   newlist->md = md;
   newlist->bp_offset = bp_offset;
   newlist->is_prefetched = 0;
@@ -78,14 +80,17 @@ f_list* newFList(long md, void* bp_offset) {
   newlist->next = NULL;
   return newlist;
 }
-fl_list* newFLlist() {
-  fl_list* newlist = (fl_list*)malloc(sizeof(fl_list));
+
+bool new_pf_list_and_node(char* buf) {}
+
+pgroup_list* new_pf_group_list() {
+  pgroup_list* newlist = (pgroup_list*)malloc(sizeof(pgroup_list));
   newlist->head = NULL;
   newlist->tail = NULL;
   return newlist;
 }
 
-void appendFNode(f_list* list, f_node* node) {
+void append_pf_node(pf_list* list, pf_node* node) {
   if (list->head == NULL) {
     list->head = node;
     list->tail = node;
@@ -95,7 +100,7 @@ void appendFNode(f_list* list, f_node* node) {
   }
 }
 
-void appendFList(fl_list* list, f_list* item) {
+void append_pf_list(pgroup_list* list, pf_list* item) {
   if (list->head == NULL) {
     list->head = item;
     list->tail = item;
@@ -104,8 +109,8 @@ void appendFList(fl_list* list, f_list* item) {
     list->tail = item;
   }
 }
-f_list* getFList(fl_list* list, long md, void* bp_offset) {
-  f_list* temp = list->head;
+pf_list* get_pf_list(pgroup_list* list, long md, void* bp_offset) {
+  pf_list* temp = list->head;
   while (temp != NULL) {
     if (temp->md == md) {
       if (temp->bp_offset == bp_offset) {
@@ -119,17 +124,17 @@ f_list* getFList(fl_list* list, long md, void* bp_offset) {
 typedef struct _restore_node {
   void* offset;
   long long data;
-  f_list* flist;
+  pf_list* flist;
   struct _restore_node* next;
-} r_node;
+} restore_node;
 
 typedef struct _restore_list {
-  r_node* head;
-  r_node* tail;
-} r_list;
+  restore_node* head;
+  restore_node* tail;
+} restore_list;
 
-r_node* newRNode(void* address, long long data, f_list* flist) {
-  r_node* newnode = (r_node*)malloc(sizeof(r_node));
+restore_node* new_restore_node(void* address, long long data, pf_list* flist) {
+  restore_node* newnode = (restore_node*)malloc(sizeof(restore_node));
   newnode->offset = address;
   newnode->data = data;
   newnode->flist = flist;
@@ -137,14 +142,14 @@ r_node* newRNode(void* address, long long data, f_list* flist) {
   return newnode;
 }
 
-r_list* newRList() {
-  r_list* newlist = (r_list*)malloc(sizeof(r_list));
+restore_list* new_restore_list() {
+  restore_list* newlist = (restore_list*)malloc(sizeof(restore_list));
   newlist->head = NULL;
   newlist->tail = NULL;
   return newlist;
 }
 
-void appendRNode(r_list* list, r_node* node) {
+void append_restore_node(restore_list* list, restore_node* node) {
   if (list->head == NULL) {
     list->head = node;
     list->tail = node;
@@ -154,8 +159,8 @@ void appendRNode(r_list* list, r_node* node) {
   }
 }
 
-r_node* getRNode(r_list* list, void* key) {
-  r_node* temp = list->head;
+restore_node* get_restore_node(restore_list* list, void* key) {
+  restore_node* temp = list->head;
   while (temp != NULL) {
     if ((temp->offset) == key) {
       return temp;
@@ -176,22 +181,22 @@ typedef struct _offset_list {
   offset_node* tail;
 } offset_list;
 
-offset_node* newOffsetNode(long md, void* bp_offset) {
+offset_node* new_offset_node(char* buf) {
   offset_node* newnode = (offset_node*)malloc(sizeof(offset_node));
-  newnode->bp_offset = bp_offset;
-  newnode->md = md;
+
+  sscanf(buf, "%ld%p\n", &newnode->md, &newnode->bp_offset);
   newnode->next = NULL;
   return newnode;
 }
 
-offset_list* newOffsetList() {
+offset_list* new_offset_list() {
   offset_list* newlist = (offset_list*)malloc(sizeof(offset_list));
   newlist->head = NULL;
   newlist->tail = NULL;
   return newlist;
 }
 
-void appendONode(offset_list* o_list, offset_node* o_node) {
+void append_offset_node(offset_list* o_list, offset_node* o_node) {
   if (o_list->head == NULL) {
     o_list->head = o_node;
     o_list->tail = o_node;
@@ -201,7 +206,7 @@ void appendONode(offset_list* o_list, offset_node* o_node) {
   }
 }
 
-offset_node* getONode(offset_list* o_list, long md) {
+offset_node* get_offset_node(offset_list* o_list, long md) {
   offset_node* o_node = o_list->head;
   // printf("\nKEY : %d\n", md);
   while (o_node != NULL) {
@@ -214,3 +219,5 @@ offset_node* getONode(offset_list* o_list, long md) {
   }
   return NULL;
 }
+
+extern FILE* get_fp(char* path, char* dir);
