@@ -139,11 +139,17 @@ read_node *new_read_node(char *buf, int type) {
 }
 
 mm_node *new_mmap_node(char *buf) {
-  mm_node *newnode = (mm_node *)malloc(sizeof(mm_node));
+  char fname[512];
 
-  sscanf(buf, "%*[^,],%*[^,],%[^,],%lld,%lld,%lld,%*[^,],%p,%p", newnode->path,
+  mm_node *newnode = (mm_node *)malloc(sizeof(mm_node));
+  memset(newnode->path, '\0', sizeof(newnode->path));
+  memset(fname, '\0', sizeof(fname));
+
+  sscanf(buf, "%*[^,],%*[^,],%[^,],%lld,%lld,%lld,%*[^,],%p,%p", fname,
          &newnode->ts, &newnode->off, &newnode->len, &newnode->start_addr,
          &newnode->end_addr);
+
+  strncpy(newnode->path, fname, sizeof(newnode->path));
 
   newnode->next = NULL;
 
