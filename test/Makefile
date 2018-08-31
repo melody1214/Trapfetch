@@ -1,6 +1,6 @@
 CC = gcc
 
-all: test-rdtsc test-sscanf test-clock
+all: test-rdtsc test-sscanf test-clock test-hash
 
 test-rdtsc: rdtsc.c rdtsc.h
 	$(CC) rdtsc.c -o rdtsc.x86_64
@@ -10,6 +10,9 @@ test-sscanf: sscanf.c
 
 test-clock: clock.c
 	$(CC) clock.c -lrt -o clock.x86_64
+
+test-hash: hash.c
+	$(CC) hash.c -o hash.x86_64
 
 clean:
 	rm -f *.x86_64
