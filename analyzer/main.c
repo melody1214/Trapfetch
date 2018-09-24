@@ -31,10 +31,11 @@ int main(int argc, char **argv) {
 
   merging_read_list();
 
-  generate_meta_list();
 
   set_trigger();
 
+  generate_meta_list();
+  
   generate_prefetch_data(argv);
 
   return 0;

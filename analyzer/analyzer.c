@@ -348,7 +348,22 @@ void set_trigger() {
       }
     }
 
-    rlist = rlist->next;
+	if (rlist->next->bp_offset == NULL) {
+		rlist->end_ts = rlist->next->end_ts;
+		rlist->tail->next = rlist->next->head;
+		rlist->tail = rlist->next->tail;
+		if (rlist->next->next != NULL)
+			rlist->next = rlist->next->next;
+		else
+			rlist->next = NULL;
+
+		reordering_read_list();
+		merging_read_list();
+		reordering_read_list();
+		merging_read_list();
+	}else {
+		rlist = rlist->next;
+	}
   }
 }
 
