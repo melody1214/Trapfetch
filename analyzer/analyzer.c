@@ -63,7 +63,7 @@ bool analyze() {
     r = new_read_node(buf, READ);
   }
 
-  // If a file has not logical block address, it will be not queued.
+  // If a file has not logical block address, it will not be queued.
   r->lba = get_logical_blk_addr(r->path);
   if (r->lba == 0) {
     return true;
@@ -191,7 +191,8 @@ void swap(read_node *a, read_node *b) {
   free(tmp);
 }
 
-void reordering_read_list() {
+// for sorting read_list into logical block address
+bool reordering_read_list() {
   int swapped;
   read_list *rlist = pl->head;
   read_node *n = rlist->head;
@@ -218,6 +219,7 @@ void reordering_read_list() {
     rlist = rlist->next;
     printf("reordering read_list...\n");
   }
+  return swapped;
 }
 
 bool merge(read_list *rlist, read_node *a, read_node *b) {
@@ -249,7 +251,7 @@ bool merge(read_list *rlist, read_node *a, read_node *b) {
   return true;
 }
 
-void merging_read_list() {
+bool merging_read_list() {
   read_list *rlist = pl->head;
   read_node *n = rlist->head;
 
@@ -275,6 +277,7 @@ void merging_read_list() {
     rlist = rlist->next;
     printf("merging read_list...\n");
   }
+  return merged;
 }
 
 void generate_meta_list() {
@@ -348,22 +351,24 @@ void set_trigger() {
       }
     }
 
-	if (rlist->next->bp_offset == NULL) {
-		rlist->end_ts = rlist->next->end_ts;
-		rlist->tail->next = rlist->next->head;
-		rlist->tail = rlist->next->tail;
-		if (rlist->next->next != NULL)
-			rlist->next = rlist->next->next;
-		else
-			rlist->next = NULL;
+    if (rlist->next->bp_offset == NULL) {
+      rlist->end_ts = rlist->next->end_ts;
+      rlist->tail->next = rlist->next->head;
+      rlist->tail = rlist->next->tail;
+      if (rlist->next->next != NULL)
+        rlist->next = rlist->next->next;
+      else
+        rlist->next = NULL;
 
-		reordering_read_list();
-		merging_read_list();
-		reordering_read_list();
-		merging_read_list();
-	}else {
-		rlist = rlist->next;
-	}
+      /* to recheck
+      reordering_read_list();
+      merging_read_list();
+      reordering_read_list();
+      merging_read_list();
+      */
+    } else {
+      rlist = rlist->next;
+    }
   }
 }
 

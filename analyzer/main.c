@@ -5,8 +5,8 @@
 extern bool an_init(char **argv);
 extern bool analyze();
 extern void reordering_pf_list();
-extern void reordering_read_list();
-extern void merging_read_list();
+extern bool reordering_read_list();
+extern bool merging_read_list();
 extern void generate_meta_list();
 extern void set_trigger();
 extern void generate_prefetch_data(char **argv);
@@ -25,14 +25,20 @@ int main(int argc, char **argv) {
 
   reordering_pf_list();
 
-  merging_read_list();
+  while (merging_read_list());
 
-  reordering_read_list();
-
-  merging_read_list();
+  // Sorting to logical block address (for HDD only)
+  while (reordering_read_list());
+  // Merging after LBA sorting (for HDD only)
+  while (merging_read_list());
 
 
   set_trigger();
+
+  // Sorting and merging again after setting triggers for HDD only
+  while (reordering_read_list());
+  while (merging_read_list());
+
 
   generate_meta_list();
   
