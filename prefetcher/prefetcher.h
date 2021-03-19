@@ -10,8 +10,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define PATH_BP "/home/melody/study/projects/trapfetch/logs/pf_"
-#define PATH_PF "/home/melody/study/projects/trapfetch/logs/bp_"
+#define PATH_BP "~/.trapfetch/logs/pf_"
+#define PATH_PF "~/.trapfetch/logs/bp_"
 
 #define PIDTABSIZE 256
 #define MAX_READAHEAD 131072

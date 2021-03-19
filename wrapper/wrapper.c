@@ -21,8 +21,8 @@
 #define	SECTOR_SIZE	512
 #define	EXTENT_MAX_COUNT	512
 
-#define READ_PATH	"/home/melody/study/projects/trapfetch/logs/r."
-#define CANDIDATE_PATH	"/home/melody/study/projects/trapfetch/logs/c."
+#define READ_PATH	"~/.trapfetch/logs/r."
+#define CANDIDATE_PATH	"~/.trapfetch/logs/c."
 
 #define	OPEN_FLAG	"a"
 

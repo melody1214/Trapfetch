@@ -35,7 +35,7 @@ unsigned int get_logical_blk_addr(char *path) {
     return 0;
   }
 
-  // unsigned int fe_logical_start; // logical bye offset of extent
+  // unsigned int fe_logical_start; // logical byte offset of extent
   unsigned int fe_physical_start;  // physical byte offset of extent
   // unsigned int fe_length; // the number of bytes in extent
 

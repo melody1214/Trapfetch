@@ -62,8 +62,25 @@ int get_filepath(pid_t pid, int fd, char *filename) {
 FILE *create_logfile(char *target_name, char log_type) {
   FILE *fp;
   char fname[512];
+  int err;
 
   memset(fname, '\0', 512 * sizeof(char));
+
+  if (mkdir("~/.trapfetch", OPEN_PERM) < 0) {
+    perror("mkdir");
+    err = errno;
+    if (errno != EEXIST) {
+      exit(EXIT_FAILURE);
+    } 
+  }
+
+  if (mkdir("~/.trapfetch/logs/", OPEN_PERM) < 0) {
+    perror("mkdir");
+    err = errno;
+    if (errno != EEXIST) {
+      exit(EXIT_FAILURE);
+    }
+  }
 
   if (log_type == 'R') {
     strcpy(fname, LOG_PATH "/r.");
@@ -358,6 +375,11 @@ void startup_child(int argc, char **argv) {
   int wait_status;
   char fname[512];
 
+  char *dirc; 
+  char *basec;
+  char *dname; // for library path of the target application
+  char *bname; // for basename of the target application
+  
   // struct user_regs_struct regs;
   struct stat fstatus;
 
@@ -370,10 +392,10 @@ void startup_child(int argc, char **argv) {
   if (tracee == 0) {
     raise(SIGSTOP);
 
-    char *dirc = strndup(argv[1], strlen(argv[1]));
-    char *basec = strndup(argv[1], strlen(argv[1]));
-    char *dname = dirname(dirc);
-    char *bname = basename(basec);
+    dirc = strndup(argv[1], strlen(argv[1]));
+    basec = strndup(argv[1], strlen(argv[1]));
+    dname = dirname(dirc);
+    bname = basename(basec);
 
     // set library path to target application's directory.
     setenv("LD_LIBRARY_PATH", dname, 1);
@@ -386,12 +408,9 @@ void startup_child(int argc, char **argv) {
     free(basec);
 
 #if ARCH == 64
-    setenv("LD_PRELOAD",
-           "/home/melody/study/projects/trapfetch/wrapper/wrapper.x86_64.so",
-           1);
+    setenv("LD_PRELOAD", "./wrapper/wrapper.x86_64.so", 1);
 #else
-    setenv("LD_PRELOAD",
-           "/home/melody/study/projects/trapfetch/wrapper/wrapper.i386.so", 1);
+    setenv("LD_PRELOAD", "./wrapper/wrapper.i386.so", 1);
 #endif
 
     printf("getenv(LD_PRELOAD) : %s\n", getenv("LD_PRELOAD"));
