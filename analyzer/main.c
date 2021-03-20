@@ -27,18 +27,20 @@ int main(int argc, char **argv) {
 
   while (merging_read_list());
 
+#ifdef HDD
   // Sorting to logical block address (for HDD only)
   while (reordering_read_list());
   // Merging after LBA sorting (for HDD only)
   while (merging_read_list());
-
+#endif
 
   set_trigger();
 
+#ifdef HDD
   // Sorting and merging again after setting triggers for HDD only
   while (reordering_read_list());
   while (merging_read_list());
-
+#endif
 
   generate_meta_list();
   
