@@ -126,8 +126,8 @@ read_node *new_read_node(char *buf, int type) {
              &newnode->off, &newnode->len);
       break;
     case MMAP:
-      sscanf(buf, "%*[^,],%*[^,],%lld,%[^,],%lld,%lld,", &newnode->ts,
-             newnode->path, &newnode->off, &newnode->len);
+      sscanf(buf, "%*[^,],%*[^,],%[^,],%lld,%lld,%lld,", newnode->path, &newnode->ts,
+             &newnode->off, &newnode->len);
       break;
     default:
       break;
@@ -145,8 +145,8 @@ mm_node *new_mmap_node(char *buf) {
   memset(newnode->path, '\0', sizeof(newnode->path));
   memset(fname, '\0', sizeof(fname));
 
-  sscanf(buf, "%*[^,],%*[^,],%lld,%[^,],%lld,%lld,%*[^,],%p,%p", &newnode->ts,
-         fname, &newnode->off, &newnode->len, &newnode->start_addr,
+  sscanf(buf, "%*[^,],%*[^,],%[^,],%lld,%lld,%lld,%*[^,],%p,%p", fname, &newnode->ts,
+         &newnode->off, &newnode->len, &newnode->start_addr,
          &newnode->end_addr);
 
   strncpy(newnode->path, fname, sizeof(newnode->path));
