@@ -26,7 +26,7 @@
 #include <sys/syscall.h>
 
 #define PAGE_SIZE	4096
-#define LOG_PATH		"~/.trapfetch/logs/"
+#define LOG_PATH		"/home/melody/work/trapfetch/logs"
 
 #define	OPEN_FLAG		"w"
 #define	OPEN_PERM		S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH

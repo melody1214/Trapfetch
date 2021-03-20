@@ -62,27 +62,10 @@ int get_filepath(pid_t pid, int fd, char *filename) {
 FILE *create_logfile(char *target_name, char log_type) {
   FILE *fp;
   char fname[512];
-  int err;
 
   memset(fname, '\0', 512 * sizeof(char));
 
-  if (mkdir("~/.trapfetch", OPEN_PERM) < 0) {
-    perror("mkdir");
-    err = errno;
-    if (errno != EEXIST) {
-      exit(EXIT_FAILURE);
-    } 
-  }
-
-  if (mkdir("~/.trapfetch/logs/", OPEN_PERM) < 0) {
-    perror("mkdir");
-    err = errno;
-    if (errno != EEXIST) {
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  if (log_type == 'R') {
+    if (log_type == 'R') {
     strcpy(fname, LOG_PATH "/r.");
   } else if (log_type == 'C') {
     strcpy(fname, LOG_PATH "/c.");
@@ -383,6 +366,15 @@ void startup_child(int argc, char **argv) {
   // struct user_regs_struct regs;
   struct stat fstatus;
 
+  // Create log files.
+  // 'R' means read, and 'C' means candidate.
+  fp_read = create_logfile(argv[1], 'R');
+  fp_candidates = create_logfile(argv[1], 'C');
+  if ((fp_read == NULL) || (fp_candidates == NULL)) {
+    perror("Failed to log file creation");
+    exit(EXIT_FAILURE);
+  }
+
   if ((tracee = fork()) < 0) {
     perror("fork");
     exit(EXIT_FAILURE);
@@ -408,7 +400,7 @@ void startup_child(int argc, char **argv) {
     free(basec);
 
 #if ARCH == 64
-    setenv("LD_PRELOAD", "./wrapper/wrapper.x86_64.so", 1);
+    setenv("LD_PRELOAD", "/home/melody/work/trapfetch/wrapper/wrapper.x86_64.so", 1);
 #else
     setenv("LD_PRELOAD", "./wrapper/wrapper.i386.so", 1);
 #endif
@@ -434,15 +426,6 @@ void startup_child(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 #endif
-
-  // Create log files.
-  // 'R' means read, and 'C' means candidate.
-  fp_read = create_logfile(argv[1], 'R');
-  fp_candidates = create_logfile(argv[1], 'C');
-  if ((fp_read == NULL) || (fp_candidates == NULL)) {
-    perror("Failed to log file creation");
-    exit(EXIT_FAILURE);
-  }
 
   thread_leader = tracee;
 
