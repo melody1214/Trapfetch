@@ -7,7 +7,7 @@ INCLUDES = tracer.h
 
 $(PROGRAM) : $(INCLUDES) $(SOURCES)
 	$(CC) $^ $(CFLAGS_64) -o $@.x86_64
-	$(CC) $^ $(CFLAGS_32) -o $@.i386
+###	$(CC) $^ $(CFLAGS_32) -o $@.i386
 
 clean:
 	rm -f *.x86_64 *.i386
