@@ -1,4 +1,6 @@
-#include "prefetcher.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
 extern bool startup_child(int argc, char **argv);
 

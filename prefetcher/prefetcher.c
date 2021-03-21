@@ -1,4 +1,7 @@
+#ifndef _PREFETCHER_HEADER_INCLUDED
+#define _PREFETCHER_HEADER_INCLUDED
 #include "prefetcher.h"
+#endif
 
 FILE *fp_bp;
 FILE *fp_pf;
@@ -66,8 +69,8 @@ void pf_init(pid_t tracee, char **argv) {
   pf_list *tmp_pf_list;
 
   // Open 'bp' and 'pf' files.
-  fp_bp = get_fp(argv[1], PATH_BP);
-  fp_pf = get_fp(argv[1], PATH_PF);
+  fp_bp = get_fp(argv[1], PATH_BP(HOME));
+  fp_pf = get_fp(argv[1], PATH_PF(HOME));
 
   if ((fp_bp == NULL) || (fp_pf == NULL)) {
     perror("Failed to open log files");
