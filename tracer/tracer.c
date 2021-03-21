@@ -65,10 +65,10 @@ FILE *create_logfile(char *target_name, char log_type) {
 
   memset(fname, '\0', 512 * sizeof(char));
 
-    if (log_type == 'R') {
-    strcpy(fname, LOG_PATH "/r.");
+  if (log_type == 'R') {
+    strcpy(fname, LOG_PATH(HOME) "/r.");
   } else if (log_type == 'C') {
-    strcpy(fname, LOG_PATH "/c.");
+    strcpy(fname, LOG_PATH(HOME) "/c.");
   } else {
     return NULL;
   }
