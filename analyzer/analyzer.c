@@ -14,8 +14,8 @@ pf_list *pl;
 // if it fails, returns true, if not, returns false.
 bool an_init(char **argv) {
   // open log files.
-  fp_read = get_fd(argv[1], PATH_READ_LOG, OPEN_READ);
-  fp_candidates = get_fd(argv[1], PATH_CANDIDATE_LOG, OPEN_READ);
+  fp_read = get_fd(argv[1], PATH_READ_LOG(HOME), OPEN_READ);
+  fp_candidates = get_fd(argv[1], PATH_CANDIDATE_LOG(HOME), OPEN_READ);
 
   if (fp_read == NULL || fp_candidates == NULL) {
     return false;
@@ -380,8 +380,8 @@ void generate_prefetch_data(char **argv) {
 
   read_list *rlist = pl->head;
 
-  fp_bp = get_fd(argv[1], PATH_BP, OPEN_WRITE);
-  fp_pf = get_fd(argv[1], PATH_PF, OPEN_WRITE);
+  fp_bp = get_fd(argv[1], PATH_BP(HOME), OPEN_WRITE);
+  fp_pf = get_fd(argv[1], PATH_PF(HOME), OPEN_WRITE);
 
   while (rlist != NULL) {
     mnode = rlist->meta_head;
