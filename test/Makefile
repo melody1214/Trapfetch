@@ -14,5 +14,8 @@ test-clock: clock.c
 test-hash: hash.c
 	$(CC) hash.c -o hash.x86_64
 
+mkpath: mkpath.c
+	$(CC) mkpath.c -o mkpath.x86_64
+
 clean:
 	rm -f *.x86_64
