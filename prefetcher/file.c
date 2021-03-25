@@ -1,14 +1,9 @@
 #include "file.h"
 
-FILE *get_fp(char *path, char *dir) {
+FILE *get_fp(char *path) {
   FILE *fp;
-  char fname[512];
 
-  memset(fname, '\0', 512 * sizeof(char));
-  strcpy(fname, dir);
-  strcat(fname, path);
-
-  if ((fp = fopen(fname, "r")) == NULL) {
+  if ((fp = fopen(path, "r")) == NULL) {
     perror("fopen");
     return NULL;
   }

@@ -14,8 +14,7 @@
 #include <pthread.h>
 #include <fcntl.h>
 
-#define PATH_BP(HOME) #HOME "/work/trapfetch/logs/pf_"
-#define PATH_PF(HOME) #HOME "/work/trapfetch/logs/bp_"
+#define LOG_PATH "/home/melody/work/trapfetch/logs"
 
 #define PIDTABSIZE 256
 #define MAX_READAHEAD 131072
@@ -58,7 +57,7 @@
       PTRACE_O_TRACEVFORK | PTRACE_O_TRACECLONE | PTRACE_O_MMAPTRACE
 
 
-extern FILE* get_fp(char* path, char* dir);
+extern FILE* get_fp(char* path);
 int hash(char *filename);
 
 struct user_regs_struct {
@@ -258,7 +257,7 @@ typedef struct _offset_list {
 offset_node* new_offset_node(char* buf) {
   offset_node* newnode = (offset_node*)malloc(sizeof(offset_node));
 
-  sscanf(buf, "%ld%p\n", &newnode->md, &newnode->bp_offset);
+  sscanf(buf, "%ld,%p\n", &newnode->md, &newnode->bp_offset);
   newnode->next = NULL;
   return newnode;
 }

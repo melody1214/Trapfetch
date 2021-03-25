@@ -1,7 +1,4 @@
-#ifndef _PREFETCHER_HEADER_INCLUDED
-#define _PREFETCHER_HEADER_INCLUDED
 #include "prefetcher.h"
-#endif
 
 FILE *fp_bp;
 FILE *fp_pf;
@@ -94,7 +91,7 @@ void *_do_prefetch(void *list) {
     close(fd);
     p_node = p_node->next;
   }
-
+  pthread_exit(NULL);
   return NULL;
 }
 
@@ -135,7 +132,6 @@ int do_prefetch(pf_list *p_list) {
   }
 
   pthread_mutex_unlock(&mtx);
-  pthread_exit(NULL);
 
   return 0;
 }
@@ -148,19 +144,36 @@ void pf_init(pid_t tracee, char **argv) {
   long off;
   long len;
   int pf_flag;
+  char *basec;
+  char *bname;
+  char fname[512];
 
   offset_node *o_node;
   pf_node *p_node;
   pf_list *p_list;
 
+  basec = strndup(argv[1], strlen(argv[1]));
+  bname = basename(basec);
+
+  memset(fname, '\0', 512 * sizeof(char));
+  strcpy(fname, LOG_PATH "/bp_");
+  strcat(fname, bname);
+
   // Open 'bp' and 'pf' files.
-  fp_bp = get_fp(argv[1], PATH_BP(HOME));
-  fp_pf = get_fp(argv[1], PATH_PF(HOME));
+  fp_bp = get_fp(fname);
+  
+  memset(fname, '\0', 512 * sizeof(char));
+  strcpy(fname, LOG_PATH "/pf_");
+  strcat(fname, bname);
+
+  fp_pf = get_fp(fname);
 
   if ((fp_bp == NULL) || (fp_pf == NULL)) {
     perror("Failed to open log files");
     exit(EXIT_FAILURE);
   }
+
+  setenv("TARGET_PROGRAM", bname, 1);
 
   thread_leader = tracee;
 
@@ -286,7 +299,7 @@ long get_md_from_mmap(pid_t tracee, int di) {
     return -1;
   }
 
-  return 0;
+  return md;
 }
 
 int insert_breakpoints(long md, pid_t tracee) {
@@ -380,6 +393,13 @@ bool trace(void) {
     exit(EXIT_FAILURE);
   }
 
+  if (lookup_pid(tracee) < 0) {
+    if (alloc_new_pid(tracee) < 0) {
+      perror("alloc_new_pid: pidtab is full");
+      exit(EXIT_FAILURE);
+    }
+  }
+
   if (WIFSTOPPED(wait_status))
     ptrace(PTRACE_GETREGS, tracee, 0, &regs);
 
@@ -399,7 +419,10 @@ bool trace(void) {
     }
     /* insert breakpoints in application's address space */
     if (launched == 0) {
-      md = hash(getenv("APPLICATION_PATH"));
+      char fname[512];
+      memset(fname, '\0', sizeof(char) * sizeof(fname));
+      strncpy(fname, getenv("TARGET_PROGRAM"), sizeof(fname));
+      md = hash(fname);
       insert_breakpoints(md, (pid_t)eventmsg);
       launched++;
     }
@@ -470,7 +493,7 @@ bool trace(void) {
           goto restart;
         case SYSCALL_STOP:
         case SIGTRAP:
-          // ptrace_getinfo(PTRACE_GETREGS, tracee, &regs);
+          ptrace_getinfo(PTRACE_GETREGS, tracee, &regs);
 #if ARCH == 32         
           if ((regs.ORIG_AX != SYS_mmap) || (regs.ORIG_AX != SYS_mmap2))
             goto restart;
@@ -482,7 +505,7 @@ bool trace(void) {
             goto restart;
           }
 
-          if (((int)regs.ARGS_3 & 0x20) == 0x20) {
+          if ((regs.ARGS_2 & 0x4) == 0) {
             goto restart;
           }
 
@@ -512,11 +535,10 @@ bool trace(void) {
           if (!stopped) {
             if (ptrace_restart(PTRACE_SYSCALL, tracee, sig) < 0) {
               exit(EXIT_FAILURE);
-            } else{
-              if (ptrace_restart(PTRACE_LISTEN, tracee, 0) < 0) {
-                exit(EXIT_FAILURE);
-              }
             }
+          } else {
+              if (ptrace_restart(PTRACE_LISTEN, tracee, 0) < 0)
+                exit(EXIT_FAILURE);
           }
       }
     case PTRACE_EVENT_EXIT:
