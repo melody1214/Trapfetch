@@ -55,5 +55,8 @@ dkms.conf
 # Log files
 logs/
 
+# Experiment files
+experiments/
+
 # vscode configurations
 .vscode/
