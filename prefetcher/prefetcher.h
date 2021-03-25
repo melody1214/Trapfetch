@@ -8,7 +8,11 @@
 #include <sys/ptrace.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/syscall.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <fcntl.h>
 
 #define PATH_BP(HOME) #HOME "/work/trapfetch/logs/pf_"
 #define PATH_PF(HOME) #HOME "/work/trapfetch/logs/bp_"
@@ -17,25 +21,95 @@
 #define MAX_READAHEAD 131072
 #define BUFSIZE 512
 
-// for x86_64
-#if ARCH == 64
-#define IP rip
-#define ORIG_AX orig_rax
-#define DX rdx
-#define DI r8
-#define TARGET_ADDR regs.rax + bp.offset
-// for i386
+#if ARCH ==	32
+#define	ORIG_AX	orig_eax
+#define	IP		eip
+#define	ARGS_0	ebx
+#define	ARGS_1	ecx
+#define	ARGS_2	edx
+#define	ARGS_3	esi
+#define	ARGS_4	edi
+#define	ARGS_5	ebp
+#define	RET		eax
+#define	BP_ADDR	regs.eax + bp_offset
+
 #else
-#define IP eip
-#define ORIG_AX orig_eax
-#define DX edx
-#define DI edi
-#define TARGET_ADDR regs.eax + bp.offset
+#define	ORIG_AX	orig_rax
+#define	IP		rip
+#define	ARGS_0	rdi
+#define	ARGS_1	rsi
+#define	ARGS_2	rdx
+#define	ARGS_3	r10
+#define	ARGS_4	r8
+#define	ARGS_5	r9
+#define	RET		rax
+#define	BP_ADDR	regs.rax + bp_offset
+
 #endif
+
+#ifndef PTRACE_EVENT_STOP
+#define PTRACE_EVENT_STOP 128
+#endif
+
+#define SYSCALL_STOP  (SIGTRAP | 0x80)
 
 #define PT_OPTIONS                                                  \
   PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACEFORK | PTRACE_O_TRACEEXEC | \
       PTRACE_O_TRACEVFORK | PTRACE_O_TRACECLONE | PTRACE_O_MMAPTRACE
+
+
+extern FILE* get_fp(char* path, char* dir);
+int hash(char *filename);
+
+struct user_regs_struct {
+#if ARCH == 32
+	long int ebx;
+	long int ecx;
+	long int edx;
+	long int esi;
+	long int edi;
+	long int ebp;
+	long int eax;
+	long int xds;
+	long int xes;
+	long int xfs;
+	long int xgs;
+	long int orig_eax;
+	long int eip;
+	long int xcs;
+	long int eflags;
+	long int esp;
+	long int xss;
+#else
+	unsigned long long int r15;
+	unsigned long long int r14;
+	unsigned long long int r13;
+	unsigned long long int r12;
+	unsigned long long int rbp;
+	unsigned long long int rbx;
+	unsigned long long int r11;
+	unsigned long long int r10;
+	unsigned long long int r9;
+	unsigned long long int r8;
+	unsigned long long int rax;
+	unsigned long long int rcx;
+	unsigned long long int rdx;
+	unsigned long long int rsi;
+	unsigned long long int rdi;
+	unsigned long long int orig_rax;
+	unsigned long long int rip;
+	unsigned long long int cs;
+	unsigned long long int eflags;
+	unsigned long long int rsp;
+	unsigned long long int ss;
+	unsigned long long int fs_base;
+	unsigned long long int gs_base;
+	unsigned long long int ds;
+	unsigned long long int es;
+	unsigned long long int fs;
+	unsigned long long int gs;
+#endif
+}regs;
 
 typedef struct _pf_node {
   char filepath[512];
@@ -81,8 +155,6 @@ pf_list* new_pf_list(long md, void* bp_offset) {
   return newlist;
 }
 
-bool new_pf_list_and_node(char* buf) {}
-
 pgroup_list* new_pf_group_list() {
   pgroup_list* newlist = (pgroup_list*)malloc(sizeof(pgroup_list));
   newlist->head = NULL;
@@ -109,6 +181,7 @@ void append_pf_list(pgroup_list* list, pf_list* item) {
     list->tail = item;
   }
 }
+
 pf_list* get_pf_list(pgroup_list* list, long md, void* bp_offset) {
   pf_list* temp = list->head;
   while (temp != NULL) {
@@ -121,10 +194,11 @@ pf_list* get_pf_list(pgroup_list* list, long md, void* bp_offset) {
   }
   return NULL;
 }
+
 typedef struct _restore_node {
   void* offset;
   long long data;
-  pf_list* flist;
+  pf_list* plist;
   struct _restore_node* next;
 } restore_node;
 
@@ -133,11 +207,11 @@ typedef struct _restore_list {
   restore_node* tail;
 } restore_list;
 
-restore_node* new_restore_node(void* address, long long data, pf_list* flist) {
+restore_node* new_restore_node(void* address, long long data, pf_list* plist) {
   restore_node* newnode = (restore_node*)malloc(sizeof(restore_node));
   newnode->offset = address;
   newnode->data = data;
-  newnode->flist = flist;
+  newnode->plist = plist;
   newnode->next = NULL;
   return newnode;
 }
@@ -219,5 +293,3 @@ offset_node* get_offset_node(offset_list* o_list, long md) {
   }
   return NULL;
 }
-
-extern FILE* get_fp(char* path, char* dir);

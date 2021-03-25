@@ -3,6 +3,7 @@
 #include <stdbool.h>
 
 extern bool startup_child(int argc, char **argv);
+extern bool trace(void);
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
@@ -14,4 +15,11 @@ int main(int argc, char *argv[]) {
     perror("startup_child");
     return -1;
   }
+
+  while (trace())
+    ;
+  
+  printf("\nprefetcher: every tracees have been terminated normally\n");
+  
+  return 0;
 }
