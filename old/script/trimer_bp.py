@@ -2,8 +2,8 @@ import os
 import sys
 
 appname = str(sys.argv[1]);
-sortpath = "/home/melody/study/project/bp/experiments/blktrace/"+str(sys.argv[1])+"/sorted/"
-exppath = "/home/melody/study/project/bp/experiments/blktrace/"+str(sys.argv[1])+"/"
+sortpath = "/home/melody/work/trapfetch/experiments/blktrace/"+str(sys.argv[1])+"/sorted/"
+exppath = "/home/melody/work/trapfetch/experiments/blktrace/"+str(sys.argv[1])+"/"
 
 numberoflog = 3
 normal = "normal."+appname+".blktrace."

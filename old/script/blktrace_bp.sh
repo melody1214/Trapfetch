@@ -85,7 +85,7 @@ then
 		then
 			 blktrace -a read -d /dev/$3 -w 200 -o ../blkout &
 			cd /home/melody/GOG\ Games/SOMA/game
-			/home/melody/study/project/bp/codes/melody/prefetch/bin/caller_64 ./Soma.bin.x86_64
+			/home/melody/work/trapfetch/old/bin/caller_64 ./Soma.bin.x86_64
 			cd $OLDPWD
 		elif [ $2 = "normal" ]
 		then

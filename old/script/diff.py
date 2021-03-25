@@ -1,5 +1,5 @@
-src_prefix = "/home/melody/git/melody/prefetch/blktrace/sd2_ssd/parsed/"
-dest_prefix = "/home/melody/git/melody/prefetch/blktrace/sd2_ssd/diff/"
+src_prefix = "/home/melody/work/trapfetch/experiments/blktrace/sd2_ssd/parsed/"
+dest_prefix = "/home/melody/work/trapfetch/experiments/blktrace/sd2_ssd/diff/"
 normal = "normal.sd2.blktrace."
 pf = "pf.sd2.blktrace."
 

@@ -115,8 +115,8 @@ static void startup_child(int argc, char **argv) {
 	}
 	*/
 
-	close(open("/home/shared/prefetch/logs/log", O_WRONLY | O_CREAT | O_TRUNC));
-	close(open("/home/shared/prefetch/logs/log_candidates", O_WRONLY | O_CREAT | O_TRUNC));
+	close(open("/home/melody/work/trapfetch/logs/log", O_WRONLY | O_CREAT | O_TRUNC, 0666));
+	close(open("/home/melody/work/trapfetch/logs/log_candidates", O_WRONLY | O_CREAT | O_TRUNC, 0666));
 
 	if ((pid = fork()) < 0) {
 		perror("fork");
@@ -138,7 +138,7 @@ static void startup_child(int argc, char **argv) {
 		free(dirc);
 		free(basec);
 
-		setenv("LD_PRELOAD","/home/melody/study/project/bp/codes/melody/prefetch/bin/libwrapper.so", 1);
+		setenv("LD_PRELOAD","/home/melody/work/trapfetch/old/bin/libwrapper.so", 1);
 		if (execv(argv[1], &argv[1])  < 0) {
 				perror("execv");
 				exit(EXIT_FAILURE);
@@ -155,9 +155,9 @@ static void startup_child(int argc, char **argv) {
 	thread_leader = pid;
 	insyscall = 0;
 
-	fp_mm_seq = createSeqFiles(argv[1], fp_mm_seq, "/home/shared/prefetch/logs/mm_");
-	fp_rd_seq = createSeqFiles(argv[1], fp_rd_seq, "/home/shared/prefetch/logs/read_");
-	fp_etc_seq = createSeqFiles(argv[1], fp_etc_seq, "/home/shared/prefetch/logs/etc_");
+	fp_mm_seq = createSeqFiles(argv[1], fp_mm_seq, "/home/melody/work/trapfetch/logs/mm_");
+	fp_rd_seq = createSeqFiles(argv[1], fp_rd_seq, "/home/melody/work/trapfetch/logs/read_");
+	fp_etc_seq = createSeqFiles(argv[1], fp_etc_seq, "/home/melody/work/trapfetch/logs/etc_");
 
 	if ((fp_mm_seq == NULL) || (fp_rd_seq == NULL) || (fp_etc_seq == NULL)) {
 		perror("fopen");
@@ -415,7 +415,7 @@ int main(int argc, char *argv[])
 
 	printf("\n******** sorting start *********\n");
 
-	strcpy(path, "/home/melody/study/project/bp/codes/melody/prefetch/script/sort.sh ");
+	strcpy(path, "/home/melody/work/trapfetch/old/script/sort.sh ");
 	strcat(path, basename(argv[1]));	
 	system(path);
 

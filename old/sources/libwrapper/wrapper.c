@@ -125,7 +125,7 @@ ssize_t read(int fildes, void *buf, size_t nbyte)
 		return ret;
 
 	if (fp_log == NULL)
-		fp_log = fopen("/home/shared/prefetch/logs/log", "a");
+		fp_log = fopen("/home/melody/work/trapfetch/logs/log", "a");
 
 
 	// get timestamp.
@@ -172,7 +172,7 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 		return ret;
 
 	if (fp_log == NULL)
-		fp_log = fopen("/home/shared/prefetch/logs/log", "a");
+		fp_log = fopen("/home/melody/work/trapfetch/logs/log", "a");
 
 	timestamp = gettime();
 
@@ -191,7 +191,7 @@ void *memset(void *s, int c, size_t n)
 	ret = original_memset(s, c, n);
 
 	if (fp_candidates == NULL)
-		fp_candidates = fopen("/home/shared/prefetch/logs/log_candidates", "a");
+		fp_candidates = fopen("/home/melody/work/trapfetch/logs/log_candidates", "a");
 	
 	timestamp = gettime();
 
@@ -211,7 +211,7 @@ int gettimeofday(struct timeval *tv, struct timezone *tz)
 	ret = original_gettimeofday(tv, tz);
 
 	if (fp_candidates == NULL)
-		fp_candidates = fopen("/home/shared/prefetch/logs/log_candidates", "a");
+		fp_candidates = fopen("/home/melody/work/trapfetch/logs/log_candidates", "a");
 
 	timestamp = gettime();
 
@@ -232,7 +232,7 @@ void *memmove(void *dest, const void *src, size_t n)
 	ret = original_memmove(dest, src, n);
 
 	if (fp_candidates == NULL)
-		fp_candidates = fopen("/home/shared/prefetch/logs/log_candidates", "a");
+		fp_candidates = fopen("/home/melody/work/trapfetch/logs/log_candidates", "a");
 
 	timestamp = gettime();
 
@@ -253,7 +253,7 @@ int sem_wait(sem_t *sem)
 	ret = original_sem_wait(sem);
 
 	if (fp_candidates == NULL)
-		fp_candidates = fopen("/home/shared/prefetch/logs/log_candidates", "a");
+		fp_candidates = fopen("/home/melody/work/trapfetch/logs/log_candidates", "a");
 
 	timestamp = gettime();
 
@@ -273,7 +273,7 @@ char *strcpy(char *dest, const char *src)
 	ret = original_strcpy(dest, src);
 	
 	if (fp_candidates == NULL)
-		fp_candidates = fopen("/home/shared/prefetch/logs/log_candidates", "a");
+		fp_candidates = fopen("/home/melody/work/trapfetch/logs/log_candidates", "a");
 
 	timestamp = gettime();
 
@@ -294,7 +294,7 @@ char *strncpy(char *dest, const char *src, size_t n)
 	ret = original_strncpy(dest, src, n);
 	
 	if (fp_candidates == NULL)
-		fp_candidates = fopen("/home/shared/prefetch/logs/log_candidates", "a");
+		fp_candidates = fopen("/home/melody/work/trapfetch/logs/log_candidates", "a");
 
 	timestamp = gettime();
 
@@ -314,7 +314,7 @@ void *memcpy(void *dest, const void *src, size_t n)
 	ret = original_memcpy(dest, src, n);
 
 	if (fp_candidates == NULL)
-		fp_candidates = fopen("/home/shared/prefetch/logs/log_candidates", "a");
+		fp_candidates = fopen("/home/melody/work/trapfetch/logs/log_candidates", "a");
 
 	timestamp = gettime();
 
@@ -334,7 +334,7 @@ size_t strlen(const char *s)
 	ret = (*original_strlen)(s);
 
 	if (fp_candidates == NULL)
-		fp_candidates = fopen("/home/shared/prefetch/logs/log_candidates", "a");
+		fp_candidates = fopen("/home/melody/work/trapfetch/logs/log_candidates", "a");
 
 	timestamp = gettime();
 
@@ -354,7 +354,7 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 	ret = (*original_pthread_mutex_lock)(mutex);
 
 	if (fp_candidates == NULL)
-		fp_candidates = fopen("/home/shared/prefetch/logs/log_candidates", "a");
+		fp_candidates = fopen("/home/melody/work/trapfetch/logs/log_candidates", "a");
 
 	timestamp = gettime();
 
@@ -375,7 +375,7 @@ int pthread_mutext_unlock(pthread_mutex_t *mutex)
 	ret = (*original_pthread_mutex_unlock)(mutex);
 
 	if (fp_candidates == NULL)
-		fp_candidates = fopen("/home/shared/prefetch/logs/log_candidates", "a");
+		fp_candidates = fopen("/home/melody/work/trapfetch/logs/log_candidates", "a");
 
 	timestamp = gettime();
 

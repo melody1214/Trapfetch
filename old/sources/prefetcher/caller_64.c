@@ -244,8 +244,8 @@ int main(int argc, char* argv[]) {
     pidtab[0] = tracee_pid;
     nprocs++;
 
-    char bp_prefix[BUFFER_SIZE] = "/home/shared/prefetch/log/bp_";
-    char pf_prefix[BUFFER_SIZE] = "/home/shared/prefetch/log/pf_";
+    char bp_prefix[BUFFER_SIZE] = "/home/melody/work/trapfetch/logs/bp_";
+    char pf_prefix[BUFFER_SIZE] = "/home/melody/work/trapfetch/logs/pf_";
 
     r_list* rlist = newRList();
 

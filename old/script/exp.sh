@@ -1,7 +1,7 @@
 #!/bin/sh
 
 APPNAME=$1
-EXPPATH='/home/melody/study/project/bp/experiments/blktrace'
+EXPPATH='/home/melody/work/trapfetch/experiments/blktrace'
 CWD=$PWD
 
 if [ $APPNAME = "speed-dreams-2" ] || [ $APPNAME = "fgfs" ] || [ $APPNAME = "vegastrike" ] || [ $APPNAME = "eclipse" ]

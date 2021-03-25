@@ -122,11 +122,11 @@ void analyze_data(char *argv[])
 	circ_queue *q;
 	int is_mmap, is_burst;
 
-	fp_read = getfp(argv[1], fp_read, "/home/shared/prefetch/logs/read_", FOPEN_READ);
-	fp_mmap = getfp(argv[1], fp_mmap, "/home/shared/prefetch/logs/mm_", FOPEN_READ);
-	fp_etc = getfp(argv[1], fp_etc, "/home/shared/prefetch/logs/etc_", FOPEN_READ);
-	fp_bp = getfp(argv[1], fp_bp, "/home/shared/prefetch/log/bp_", FOPEN_WRITE);
-	fp_pf = getfp(argv[1], fp_pf, "/home/shared/prefetch/log/pf_", FOPEN_WRITE);
+	fp_read = getfp(argv[1], fp_read, "/home/melody/work/trapfetch/logs/read_", FOPEN_READ);
+	fp_mmap = getfp(argv[1], fp_mmap, "/home/melody/work/trapfetch/logs/mm_", FOPEN_READ);
+	fp_etc = getfp(argv[1], fp_etc, "/home/melody/work/trapfetch/logs/etc_", FOPEN_READ);
+	fp_bp = getfp(argv[1], fp_bp, "/home/melody/work/trapfetch/log/bp_", FOPEN_WRITE);
+	fp_pf = getfp(argv[1], fp_pf, "/home/melody/work/trapfetch/log/pf_", FOPEN_WRITE);
 
 	m_list = new_mmap_list();
 
