@@ -3,16 +3,22 @@
 #include <linux/module.h>
 #include <linux/proc_fs.h>
 #include <linux/fs.h>
-//#include <asm/uaccess.h>
+#include <linux/version.h>
+#include <linux/uaccess.h>
 #include <linux/slab.h>
+#include <linux/seq_file.h>
 //#include <linux/blk_types.h>
 //#include <stdlib.h>
 
 #define procfs_name "lba_check"
 
+#define P_DIR	"trapfetch"
+#define	P_FILE	"lbn_checker"
+
+static struct proc_dir_entry *proc_dir = NULL;
+static struct proc_dir_entry *proc_file = NULL;
 
 extern long evaluator_lba;
-static struct proc_dir_entry *my_proc = NULL;
 static char *buffer = NULL;
 static int buf_count;
 static int lba;
@@ -50,25 +56,24 @@ static int my_release(struct inode *ino, struct file *fp)
 	return 0;
 }
 
-static const struct file_operations my_proc_fops = {
-	.owner = THIS_MODULE,
-	.open = my_open,
-	.read = my_read,
-	.write = my_write,
-	.release = my_release
+static const struct proc_ops my_proc_fops = {
+	.proc_open = my_open,
+	.proc_read = my_read,
+	.proc_write = my_write,
+	.proc_release = my_release
 };
 
-int __init my_init(void)
+int __init proc_init(void)
 {
-	if (register_chrdev(250, "v_device", &my_proc_fops) < 0)
-		printk(KERN_ALERT "driver init failed\n");
-	else
-		printk(KERN_ALERT "driver init successful\n");
-
-	my_proc = proc_create(procfs_name, 0, NULL, &my_proc_fops);
-
-	if (my_proc == NULL) {
-		return -ENOMEM;
+	if ((proc_dir = proc_mkdir(P_DIR, NULL)) == NULL) {
+		printk(KERN_ERR "driver init failed\n");
+		return -1;
+	}
+	
+	if ((proc_file = proc_create(P_FILE, 0666, proc_dir, &my_proc_fops)) == NULL) {
+		printk(KERN_ERR "Unable to create /proc/%s/%s\n", P_DIR, P_FILE);
+		remove_proc_entry(P_DIR, NULL);
+		return -1;
 	}
 
 	buffer = (char *)kmalloc(1024, GFP_KERNEL);
@@ -76,21 +81,29 @@ int __init my_init(void)
 	if(buffer != NULL)
 		memset(buffer, '\0', 1024);
 
-	printk(KERN_INFO "/proc/lba_check created\n");
+	printk(KERN_INFO "/proc/%s/%s has been created\n", P_DIR, P_FILE);
 	return 0;
 }
 
-void __exit my_exit(void)
+void __exit proc_exit(void)
 {
-	unregister_chrdev(250, "v_device");
-	printk(KERN_ALERT "driver exit successful\n");
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
+	remove_proc_entry(P_FILE, proc_dir);
+	remove_proc_entry(P_DIR, NULL);
+#else
+	remove_proc_subtree(P_DIR, NULL);
+#endif
 
-	remove_proc_entry(procfs_name, NULL);
+	proc_remove(proc_file);
+	proc_remove(proc_dir);
+
+	printk(KERN_INFO "/proc/%s/%s has been removed\n", P_DIR, P_FILE);
+
 	kfree(buffer);
 }
 
-module_init(my_init);
-module_exit(my_exit);
+module_init(proc_init);
+module_exit(proc_exit);
 MODULE_LICENSE("GPL");
 
 
