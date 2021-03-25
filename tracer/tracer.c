@@ -66,9 +66,9 @@ FILE *create_logfile(char *target_name, char log_type) {
   memset(fname, '\0', 512 * sizeof(char));
 
   if (log_type == 'R') {
-    strcpy(fname, LOG_PATH(HOME) "/r.");
+    strcpy(fname, LOG_PATH "/r.");
   } else if (log_type == 'C') {
-    strcpy(fname, LOG_PATH(HOME) "/c.");
+    strcpy(fname, LOG_PATH "/c.");
   } else {
     return NULL;
   }
@@ -265,7 +265,7 @@ bool trace(void) {
   switch (event) {
     case 0:
       if ((sig == SIGTRAP) || (sig == SYSCALL_STOP)) {
-        ptrace_getinfo(PTRACE_GETREGS, tracee, &regs);
+        // ptrace_getinfo(PTRACE_GETREGS, tracee, &regs);
 
 #ifdef MEASURE_OVERHEAD
         num_of_syscall++;
