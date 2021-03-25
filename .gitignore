@@ -55,6 +55,9 @@ dkms.conf
 # Log files
 logs/
 
+# Binary files
+bin/
+
 # Experiment files
 experiments/
 
