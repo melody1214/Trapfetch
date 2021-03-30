@@ -118,11 +118,10 @@ int do_prefetch(pf_list *p_list) {
       perror("_do_prefetch");
       return -1;
     }
-
-    return 0;
   }
 #endif
 
+#ifdef SSD
   /* for loading */
   pthread_mutex_lock(&mtx);
 
@@ -132,6 +131,7 @@ int do_prefetch(pf_list *p_list) {
   }
 
   pthread_mutex_unlock(&mtx);
+#endif
 
   return 0;
 }
