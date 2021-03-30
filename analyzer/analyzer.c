@@ -300,6 +300,8 @@ void generate_meta_list() {
 void set_trigger() {
   char buf[512];
   void *ret_addr;
+  void *bp_offset;
+  unsigned long md;
   long long ts;
   long long ts_idle_begin;
   long long ts_idle_end;
@@ -341,9 +343,13 @@ void set_trigger() {
         }
 
         if ((mnode->start_addr <= ret_addr) && (mnode->end_addr >= ret_addr)) {
-          rlist->next->md = mnode->md;
-          rlist->next->bp_offset =
-              (void *)((long long)ret_addr - (long long)mnode->start_addr);
+          bp_offset = (void *)((long long)ret_addr - (long long)mnode->start_addr);
+          md = mnode->md;
+          if (is_trigger_duplicated(pl, md, bp_offset)) {
+            continue;
+          }
+          rlist->next->md = md;
+          rlist->next->bp_offset = bp_offset;
           break;
         }
 

@@ -262,4 +262,23 @@ void insert_read_list_into_pf_list(pf_list *pl, read_list *rl) {
   pl->tail = rl;
 }
 
+bool is_trigger_duplicated(pf_list *pl, unsigned long md, void *bp_offset) {
+  read_list *tmp = pl->head;
+  
+  if (tmp == NULL) {
+    perror("is_trigger_duplicated");
+    return -1;
+  }
+  
+  while (1) {
+    if (tmp->md == md && tmp->bp_offset == bp_offset) {
+      return true;
+    }
+    if (tmp->next == NULL) {
+      return false;
+    }
+    tmp = tmp->next;
+  }
+}
+
 #endif /* ANALYZER_HEADER_INCLUDED */
