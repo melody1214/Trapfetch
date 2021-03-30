@@ -346,6 +346,8 @@ void set_trigger() {
           bp_offset = (void *)((long long)ret_addr - (long long)mnode->start_addr);
           md = mnode->md;
           if (is_trigger_duplicated(pl, md, bp_offset)) {
+            printf("triggering...\n");
+            mnode = mnode->next;
             continue;
           }
           rlist->next->md = md;
