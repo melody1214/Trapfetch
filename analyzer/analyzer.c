@@ -1,6 +1,7 @@
 #include "analyzer.h"
 #include "file.h"
 #include "queue.h"
+#include "hashmap.h"
 
 FILE *fp_read;
 FILE *fp_candidates;
@@ -9,6 +10,33 @@ queue q;
 read_list *rl;
 mm_list *ml;
 pf_list *pl;
+
+struct hashmap *map;
+
+struct trigger {
+  char *key;
+  long long value;
+};
+
+int trigger_compare(const void *a, const void *b, void *udata) {
+    const struct trigger *ua = a;
+    const struct trigger *ub = b;
+    return strcmp(ua->key, ub->key);
+}
+
+bool trigger_iter(const void *item, void *udata) {
+    const struct trigger *tg = item;
+    if (tg->value == 0) {
+      hashmap_delete(map, &(struct trigger){ .key= tg->key}); 
+    }
+    printf("trigger: %s, %lld\n", tg->key, tg->value);
+    return true;
+}
+
+uint64_t trigger_hash(const void *item, uint64_t seed0, uint64_t seed1) {
+    const struct trigger *tg = item;
+    return hashmap_sip(tg->key, strlen(tg->key), seed0, seed1);
+}
 
 // an_init prepares to begin to analyze traced data.
 // if it fails, returns true, if not, returns false.
@@ -251,6 +279,7 @@ bool merge(read_list *rlist, read_node *a, read_node *b) {
   return true;
 }
 
+
 bool merging_read_list() {
   read_list *rlist = pl->head;
   read_node *n = rlist->head;
@@ -299,6 +328,7 @@ void generate_meta_list() {
 
 void set_trigger() {
   char buf[512];
+  char key[64];
   void *ret_addr;
   void *bp_offset;
   unsigned long md;
@@ -311,6 +341,30 @@ void set_trigger() {
 
   rlist->bp_offset = 0;
   rlist->md = 0;
+
+  // create hashmap for candidates of trigger
+  map = hashmap_new(sizeof(struct trigger), 0, 0, 0, 
+                                    trigger_hash, trigger_compare, NULL);
+
+
+  while (fgets(buf, sizeof(buf), fp_candidates)) {
+    memset(key, '\0', 64 * sizeof(char));
+    sscanf(buf, "%s,%lld", key, &ts);
+    if (hashmap_get(map, &(struct trigger){ .key= key}) == NULL) {
+      hashmap_set(map, &(struct trigger){ .key= key, .value= ts});
+    } else {
+      hashmap_set(map, &(struct trigger){ .key= key, .value= 0}); 
+    }
+  }
+
+  printf("******** hashmap scan start *********\n");
+  hashmap_scan(map, trigger_iter, NULL);
+  printf("******** hashmap scan end *********\n");
+  printf("******** hashmap scan start *********\n");
+  hashmap_scan(map, trigger_iter, NULL);
+  printf("******** hashmap scan end *********\n");
+
+  rewind(fp_candidates);
 
   while (rlist->next != NULL) {
     ts_idle_begin = rlist->end_ts;
