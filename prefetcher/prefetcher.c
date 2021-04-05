@@ -1,18 +1,17 @@
 #include "prefetcher.h"
 
-FILE *fp_bp;
-FILE *fp_pf;
-
-static int pidtab[PIDTABSIZE];
-static int nprocs;
-static int insyscall;
-static int launched;
-static int bp_counter, insert_counter;
-static pid_t thread_leader;
+int pidtab[PIDTABSIZE];
+int nprocs;
+int launched;
+int total_bp_counter, bp_counter, insert_counter;
+pid_t thread_leader;
 
 restore_list *r_list;
 offset_list *o_list;
 pgroup_list *pg_list;
+
+pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+pthread_attr_t attr;
 
 pid_t alloc_new_pid(pid_t pid) {
   int i;
@@ -61,8 +60,12 @@ void *_do_prefetch(void *list) {
   off_t offset;
   off_t length;
 
+  //pthread_mutex_lock(&mtx);
+
   p_list = (pf_list *)list;
   p_node = p_list->head;
+
+  printf("do prefetch for sequence [md: %zu, bp_offset: %p]\n", p_list->md, p_list->bp_offset);
 
   while (p_node->flag == 0) {
     stat(p_node->filepath, NULL);
@@ -91,14 +94,22 @@ void *_do_prefetch(void *list) {
     close(fd);
     p_node = p_node->next;
   }
-  pthread_exit(NULL);
-  return NULL;
+
+  printf("complete prefetch for sequence [md: %zu, bp_offset: %p]\n", p_list->md, p_list->bp_offset);
+  printf("thread %d will be terminated\n", gettid());
+
+  //pthread_mutex_unlock(&mtx);
+
+  //pthread_exit((void *)0);
+  
+  return (void *)0;
 }
 
 int do_prefetch(pf_list *p_list) {
   pthread_t prefetch_thread;
-  pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+  
 
+  //pthread_mutex_lock(&mtx);
   if (p_list == NULL) {
     perror("p_list is NULL\n");
     return -1;
@@ -111,35 +122,43 @@ int do_prefetch(pf_list *p_list) {
 
   p_list->is_prefetched = 1;
 
-#ifdef HDD
-  /* Prefetching for launching with blocking when HDD is attached to computing device */
+#ifdef abcde
+    /* Prefetching for launching with blocking when HDD is attached to computing device */
   if (launched == 0) {
     if (_do_prefetch((void *)p_list) < 0) {
       perror("_do_prefetch");
       return -1;
     }
+
+    return 0;
   }
 #endif
 
-#ifdef SSD
+  if (_do_prefetch((void *)p_list) < 0) {
+    perror("_do_prefetch");
+    return -1;
+  }
   /* for loading */
-  pthread_mutex_lock(&mtx);
-
-  if (pthread_create(&prefetch_thread, NULL, _do_prefetch, (void *)p_list) != 0) {
+  /*
+  if (pthread_create(&prefetch_thread, &attr, _do_prefetch, (void *)p_list) != 0) {
     perror("pthread_create");
     return -1;
   }
+  */
 
-  pthread_mutex_unlock(&mtx);
-#endif
+  //pthread_attr_destroy(&attr);
+  //pthread_mutex_unlock(&mtx);
 
   return 0;
 }
 
 void pf_init(pid_t tracee, char **argv) {
+  FILE *fp_bp;
+  FILE *fp_pf;
+  
   char buf[BUFSIZE];
   char path[BUFSIZE];
-  long md;
+  size_t md;
   void *bp_offset;
   long off;
   long len;
@@ -151,6 +170,16 @@ void pf_init(pid_t tracee, char **argv) {
   offset_node *o_node;
   pf_node *p_node;
   pf_list *p_list;
+
+  if (pthread_attr_init(&attr) != 0) {
+    perror("pthread_attr_init\n");
+    exit(EXIT_FAILURE);
+  }
+
+  if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0) {
+    perror("pthread_attr_setdetachstate\n");
+    exit(EXIT_FAILURE);
+  }
 
   basec = strndup(argv[1], strlen(argv[1]));
   bname = basename(basec);
@@ -174,6 +203,7 @@ void pf_init(pid_t tracee, char **argv) {
   }
 
   setenv("TARGET_PROGRAM", bname, 1);
+  setenv("APP_PATH", argv[1], 1);
 
   thread_leader = tracee;
 
@@ -193,19 +223,26 @@ void pf_init(pid_t tracee, char **argv) {
 
   pg_list = new_pf_group_list();
 
+  total_bp_counter = -1;
+
   while (fgets(buf, BUFSIZE, fp_bp)) {
     if ((o_node = new_offset_node(buf)) == NULL) {
       perror("new_offset_node");
       exit(EXIT_FAILURE);
     }
+
+    if (o_node->bp_offset == NULL) {
+      continue;
+    }
+
     append_offset_node(o_list, o_node);
-    bp_counter++;
+    total_bp_counter++;
   }
 
   while (fgets(buf, BUFSIZE, fp_pf)) {
     memset(path, '\0', BUFSIZE * sizeof(char));
 
-    sscanf(buf, "%ld,%p,%[^,],%ld,%ld,%*d,%d\n", &md, &bp_offset, path, &off, &len, &pf_flag);
+    sscanf(buf, "%zu,%p,%[^,],%ld,%ld,%*d,%d\n", &md, &bp_offset, path, &off, &len, &pf_flag);
 
     if ((p_node = new_pf_node(path, off, len, pf_flag)) == NULL) {
       perror("new_pf_node");
@@ -221,6 +258,9 @@ void pf_init(pid_t tracee, char **argv) {
     
     append_pf_node(p_list, p_node);
   }
+
+  fclose(fp_bp);
+  fclose(fp_pf);
 }
 
 int ptrace_restart(const unsigned int op, pid_t pid, unsigned int sig) {
@@ -283,16 +323,18 @@ int restore_data(pid_t tracee, void *inst_ptr, restore_node *r_node) {
   return 0;
 }
 
-long get_md_from_mmap(pid_t tracee, int di) {
-  long md;
+size_t get_md_from_mmap(pid_t tracee, int di) {
+  size_t md;
   char buf[512];
   char fname[512];
 
+  fflush(stdout);
+  memset(buf, '\0', 512 * sizeof(char));
   sprintf(buf, "/proc/%d/fd/%d", tracee, di);
-  memset(fname, '\0', sizeof(fname));
-  readlink(buf, fname, sizeof(fname));
+  memset(fname, '\0', 512 * sizeof(char));
+  readlink(buf, fname, 512 * sizeof(char));
 
-  md = hash(fname);
+  md = fnv1a_hash(fname);
 
   if (md < 0) {
     perror("get_md_from_mmap");
@@ -302,7 +344,7 @@ long get_md_from_mmap(pid_t tracee, int di) {
   return md;
 }
 
-int insert_breakpoints(long md, pid_t tracee) {
+int insert_breakpoints(size_t md, pid_t tracee, unsigned long long int start_off) {
 #if ARCH == 32
   unsigned long backup_data;
   unsigned long bpcode;
@@ -317,9 +359,8 @@ int insert_breakpoints(long md, pid_t tracee) {
   void *bp_offset;
   
   o_node = get_offset_node(o_list, md);
-
+  
   if (o_node == NULL) {
-    perror("insert_breakpoints");
     return -1;
   }
 
@@ -332,35 +373,34 @@ int insert_breakpoints(long md, pid_t tracee) {
       continue;
     }
 
-    if (p_list->is_prefetched == 1) {
-      o_node = o_node->next;
-      continue;
+    if (get_restore_node(r_list, bp_offset) != NULL) {
+      printf("[md: %zu, bp_offset: %p] Breakpoint has been already inserted\n", md, bp_offset);
+      return -1;
     }
 
-  /* Create and store restoring information */
-#if ARCH == 32
-    backup_data = ptrace(PTRACE_PEEKTEXT, tracee, (void *)(0x2000000 + bp_offset), NULL);
-    r_node = new_restore_node((void *)(0x2000000 + bp_offset), backup_data, p_list);
-#else
-    backup_data = ptrace(PTRACE_PEEKTEXT, tracee, (void *)(0x400000 + bp_offset), NULL);
-    r_node = new_restore_node((void *)(0x400000 + bp_offset), backup_data, p_list);
-#endif
+    if (p_list->is_prefetched == 1) {
+      perror("This trigger has already been prefetched\n");
+      return -1;
+    }
 
+    /* Create and store restoring information */
+    backup_data = ptrace(PTRACE_PEEKTEXT, tracee, (void *)(start_off + bp_offset), NULL);
+    r_node = new_restore_node((void *)(start_off + bp_offset), backup_data, p_list);
     append_restore_node(r_list, r_node);
 
 #if ARCH == 32
     bpcode = (backup_data & 0xffffff00) | 0xcc;
-    ptrace(PTRACE_POKETEXT, tracee, (void *)(0x2000000 + bp_offset), bpcode);
-    printf("\nInsert breakpoint at: %p(offset = %p)\n", (void *)(0x2000000 + bp_offset), (void *)bp_offset);
 #else
     bpcode = (backup_data & 0xffffffffffffff00) | 0xcc;
-    ptrace(PTRACE_POKETEXT, tracee, (void *)(0x400000 + bp_offset), bpcode);
-    printf("\nInsert breakpoint at: %p(offset = %p)\n", (void *)(0x400000 + bp_offset), (void *)bp_offset);
 #endif
+
+    /* Insert breakpoints into target address */
+    ptrace(PTRACE_POKETEXT, tracee, (void *)(start_off + bp_offset), bpcode);
+    printf("\nInsert breakpoint %d at: %p(offset = %p)\n", insert_counter, (void *)(start_off + bp_offset), bp_offset);
     insert_counter++;
     o_node = o_node->next;
   }
-
+  
   return 0;
 }
 
@@ -373,10 +413,9 @@ bool trace(void) {
 
   unsigned int sig, event;
   unsigned long eventmsg;
-  long md;
+  size_t md;
 
   restore_node *r_node;
-  siginfo_t si = {};
   
   tracee = waitpid(-1, &wait_status, __WALL);
 
@@ -389,7 +428,7 @@ bool trace(void) {
     if (nprocs == 0 && wait_errno == ECHILD)
       return false;
 
-    // printf("nprocs: %d, errno: %d\n", nprocs, wait_errno);
+    printf("nprocs: %d, errno: %d\n", nprocs, wait_errno);
     exit(EXIT_FAILURE);
   }
 
@@ -419,12 +458,19 @@ bool trace(void) {
     }
     /* insert breakpoints in application's address space */
     if (launched == 0) {
+      //pthread_mutex_lock(&mtx);
+      launched++;
       char fname[512];
       memset(fname, '\0', sizeof(char) * sizeof(fname));
-      strncpy(fname, getenv("TARGET_PROGRAM"), sizeof(fname));
-      md = hash(fname);
-      insert_breakpoints(md, (pid_t)eventmsg);
-      launched++;
+      strncpy(fname, getenv("APP_PATH"), sizeof(fname));
+      md = fnv1a_hash(fname);
+#if ARCH == 32
+      insert_breakpoints(md, (pid_t)eventmsg, 0x2000000);
+#elif ARCH == 64
+      insert_breakpoints(md, (pid_t)eventmsg, 0x400000);
+#endif
+      
+      //pthread_mutex_unlock(&mtx);
     }
   }
 
@@ -458,42 +504,47 @@ bool trace(void) {
   /* event == 0; event_delivered_stop or ptrace_stop */
   /*  sig == 133; syscall-stop, sig == 128; SI_KERNEL */
   switch (event) {
-    case 0:
+    case 0:;
+      siginfo_t si = {};
       ptrace_getinfo(PTRACE_GETSIGINFO, tracee, &si);
       
       switch (si.si_code) {
         case SI_KERNEL:
+          //pthread_mutex_lock(&mtx);
+
 #if ARCH == 32
-          printf("Breakpoint[%d], EIP: 0x%p\n", bp_counter, (void *)(regs.IP - 1));
+          printf("Breakpoint at EIP: 0x%p\n", (void *)(regs.IP - 1));
 #else
-          printf("Breakpoint[%d], RIP: 0x%p\n", bp_counter, (void *)(regs.IP - 1));
+          printf("Breakpoint at RIP: 0x%p\n", (void *)(regs.IP - 1));
 #endif
+          
           r_node = get_restore_node(r_list, (void *)(regs.IP - 1));
 
           if (r_node == NULL) {
             perror("restore node can't be found");
             exit(EXIT_FAILURE);
           }
-
+          /*
           if (restore_data(tracee, (void *)(regs.IP - 1), r_node) < 0) {
             perror("restore_data");
             exit(EXIT_FAILURE);
           }
+          */
+          ptrace(PTRACE_POKEDATA, tracee, regs.IP - 1, r_node->data);
+          regs.IP = regs.IP - 1;
+          ptrace(PTRACE_SETREGS, tracee, NULL, &regs);
 
           if (do_prefetch(r_node->plist) < 0) {
             perror("do_prefetch");
-            exit(EXIT_FAILURE);
+          } else {
+            bp_counter++;
           }
-
-          if (insert_counter == bp_counter) {
-            ptrace_restart(PTRACE_CONT, tracee, 0);
-            return true;
-          }
-
+          
+          //pthread_mutex_unlock(&mtx);
           goto restart;
         case SYSCALL_STOP:
         case SIGTRAP:
-          ptrace_getinfo(PTRACE_GETREGS, tracee, &regs);
+          //ptrace_getinfo(PTRACE_GETREGS, tracee, &regs);
 #if ARCH == 32         
           if ((regs.ORIG_AX != SYS_mmap) || (regs.ORIG_AX != SYS_mmap2))
             goto restart;
@@ -505,9 +556,15 @@ bool trace(void) {
             goto restart;
           }
 
+          if (((int)regs.ARGS_3 & 0x20) == 0x20) {
+            goto restart;
+          }
+
+          /*
           if ((regs.ARGS_2 & 0x4) == 0) {
             goto restart;
           }
+          */
 
           // syscall-entry stop
           if (insyscall == 0) {
@@ -515,19 +572,24 @@ bool trace(void) {
             goto restart;
           } 
 
+          //pthread_mutex_lock(&mtx);
+          
           // syscall-exit stop          
           insyscall = 0;
 
           /* 1. Distinguish mmap() */
           md = get_md_from_mmap(tracee, (int)regs.ARGS_4);
-
+        
           if (md < 0) {
             perror("get_md_from_mmap");
             exit(EXIT_FAILURE);
           }
-
-          insert_breakpoints(md, tracee);
-
+          
+          if (insert_counter < total_bp_counter) {
+            insert_breakpoints(md, tracee, regs.RET);
+          }
+          //pthread_mutex_unlock(&mtx);
+          
           goto restart;
         default:
           stopped = ptrace(PTRACE_GETSIGINFO, tracee, 0, &si) < 0;
@@ -543,7 +605,7 @@ bool trace(void) {
       }
     case PTRACE_EVENT_EXIT:
       if (tracee == thread_leader)
-        goto restart;
+        ;
     case PTRACE_EVENT_STOP:
       switch (sig) {
         case SIGSTOP:
@@ -557,7 +619,8 @@ bool trace(void) {
   }
 
 restart:
-  if (insert_counter == bp_counter) {
+  //pthread_mutex_lock(&mtx);
+  if (insert_counter == total_bp_counter) {
     if (ptrace_restart(PTRACE_CONT, tracee, 0) < 0) {
       perror("ptrace_restart: CONT\n");
       exit(EXIT_FAILURE);
@@ -568,7 +631,9 @@ restart:
       exit(EXIT_FAILURE);
     }
   }
-  
+  //pthread_mutex_unlock(&mtx);
+  //pthread_mutex_unlock(&mtx); 
+ 
   return true;
 }
 
@@ -607,7 +672,11 @@ bool startup_child(int argc, char **argv) {
     return false;
   }
 
+  printf("tracer start with tid: %d\n", gettid());
+
   pf_init(tracee, argv);
+
+  //pthread_mutex_lock(&mtx);
 
   insyscall = 0;
 
@@ -616,12 +685,14 @@ bool startup_child(int argc, char **argv) {
     return false;
 
   /* zero values of both md and bp_offset present performing prefetching for launching application */
-  if (do_prefetch(pg_list->head) < 0) {
-    perror("do_prefetch");
-    return false;
-  }
-
+    if (do_prefetch(pg_list->head) < 0) {
+      perror("do_prefetch");
+      return false;
+    }
+      
   kill(tracee, SIGCONT);
+
+  //pthread_mutex_unlock(&mtx);
 
   return true;
 }
