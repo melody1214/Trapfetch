@@ -1,5 +1,6 @@
 #include <string.h>
 
+/*
 typedef union {
     int num;
     char str[4];
@@ -34,7 +35,14 @@ int hash(char *input) {
 
     return hval;
 }
+*/
 
-int gen_message_digest(char *input) {
-    return hash(input);
+size_t fnv1a_hash(const char* cp)
+{
+    size_t hash = 0x811c9dc5;
+    while (*cp) {
+        hash ^= (unsigned char) *cp++;
+        hash *= 0x01000193;
+    }
+    return hash;
 }
