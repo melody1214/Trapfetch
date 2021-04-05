@@ -258,13 +258,13 @@ int main(int argc, char* argv[]) {
     char bp_read_buffer[BUFFER_SIZE];
 
     while (fgets(bp_read_buffer, BUFFER_SIZE, bp_file)) {
-      long bp_md;
+      size_t bp_md;
 #if ARCH == 64
       void* bp_bp_offset;
-      sscanf(bp_read_buffer, "%ld,%p\n", &bp_md, &bp_bp_offset);
+      sscanf(bp_read_buffer, "%zu,%p\n", &bp_md, &bp_bp_offset);
 #else
       void* bp_bp_offset;
-      sscanf(bp_read_buffer, "%ld,%p\n", &bp_md, &bp_bp_offset);
+      sscanf(bp_read_buffer, "%zu,%p\n", &bp_md, &bp_bp_offset);
 #endif
       offset_node* o_node = newOffsetNode(bp_md, bp_bp_offset);
       appendONode(o_list, o_node);
@@ -280,7 +280,7 @@ int main(int argc, char* argv[]) {
     }
     char pf_read_buffer[BUFFER_SIZE];
     while (fgets(pf_read_buffer, BUFFER_SIZE, pf_file)) {
-      long pf_md;
+      size_t pf_md;
       char pf_filepath[512];
       long long pf_offset;
       long pf_len;
@@ -288,11 +288,11 @@ int main(int argc, char* argv[]) {
       memset(pf_filepath, '\0', 512 * sizeof(char));
 #if ARCH == 64
       void* pf_bp_offset;
-      sscanf(pf_read_buffer, "%ld,%p,%[^,],%lld,%ld,%*[^,],%d\n", &pf_md,
+      sscanf(pf_read_buffer, "%zu,%p,%[^,],%lld,%ld,%*[^,],%d\n", &pf_md,
              &pf_bp_offset, pf_filepath, &pf_offset, &pf_len, &pf_flag);
 #else
       void* pf_bp_offset;
-      sscanf(pf_read_buffer, "%ld,%p,%[^,],%lld,%ld,%*[^,],%d\n", &pf_md,
+      sscanf(pf_read_buffer, "%zu,%p,%[^,],%lld,%ld,%*[^,],%d\n", &pf_md,
              &pf_bp_offset, pf_filepath, &pf_offset, &pf_len, &pf_flag);
 #endif
 
@@ -313,6 +313,21 @@ int main(int argc, char* argv[]) {
     // long prefetched_md = lauch_prefetch->md;
     // void *prefetched_bp = lauch_prefetch -> bp_offset;
     if ((lauch_prefetch != NULL) && ((lauch_prefetch->is_prefetched) == 0)) {
+#ifdef SSD
+      pthread_mutex_lock(&mtx);
+
+      if (pthread_create(&prefetch_thread, NULL, do_prefetch, (void *)lauch_prefetch) != 0) {
+        perror("pthread create");
+        exit(EXIT_FAILURE);
+      }
+
+      pthread_mutex_unlock(&mtx);
+#endif
+
+#ifdef HDD
+      do_prefetch((void *)lauch_prefetch);
+#endif
+      /*
       f_node* temp_node = lauch_prefetch->head;
 
       while (temp_node->flag == 0) {
@@ -344,8 +359,9 @@ int main(int argc, char* argv[]) {
         }
         close(temp_fd);
         temp_node = temp_node->next;
+        
       }
-
+      */
       lauch_prefetch->is_prefetched = 1;
     }
 
@@ -429,7 +445,7 @@ int main(int argc, char* argv[]) {
           char fname[512];
           memset(fname, '\0', 512 * sizeof(char));
           realpath(argv[1], fname);
-          long application_md = hash(fname);
+          size_t application_md = hash(fname);
           offset_node* temp_onode = getONode(o_list, application_md);
           while (temp_onode != NULL) {
             bp_offset = temp_onode->bp_offset;
@@ -542,104 +558,13 @@ int main(int argc, char* argv[]) {
               pthread_mutex_lock(&mtx);
 
               prefetch_list->is_prefetched = 1;
-              /*
-              if (pthread_attr_init(&attr) < 0) {
-                      perror("pthread_attr_init");
-              }
-
-              if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) <
-              0) { perror("pthread_attr_setdetachstate");
-              }
-              */
 
               if (pthread_create(&prefetch_thread, NULL, do_prefetch,
                                  (void*)prefetch_list) != 0) {
                 perror("pthread_create");
               }
-              /*
-              if (pthread_join(prefetch_thread, NULL) != 0) {
-                      perror("pthread_join");
-              }
-              */
-              // pthread_exit(&prefetch_thread);
 
-              /*
-              if (pthread_attr_destroy(&attr) < 0) {
-                      perror("pthread_attr_destroy");
-              }
-              */
-              // do_prefetch(prefetch_list);
               pthread_mutex_unlock(&mtx);
-              /*
-              pthread_attr_t attr;
-
-              if (pthread_attr_init(&attr) < 0) {
-                      perror("pthread_attr_init");
-              }
-
-              if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) <
-              0) { perror("pthread_attr_setdetachstate");
-              }
-
-              if (pthread_create(&prefetch_thread, &attr, do_prefetch,
-              (void*)prefetch_list) < 0) { perror("pthread_create");
-              }
-
-              if (pthread_attr_destroy(&attr) < 0) {
-                      perror("pthread_attr_destroy");
-              }
-              */
-              // pthread_mutex_lock(&mtx);
-
-              // do_thread((void *)prefetch_list);
-              // pthread_mutex_lock(&mtx);
-              /*
-              if (pthread_create(&prefetch_thread, NULL, do_prefetch,
-              (void*)prefetch_list) != 0) { perror("pthread_create");
-              }
-
-
-              if (pthread_join(prefetch_thread, NULL) != 0){
-                      perror("pthread_join");
-              }
-              else {
-                      pthread_exit(&res);
-                      pthread_mutex_unlock(&mtx);
-              }
-              */
-
-              // for (int i = 0; i < PREFETCH_AHEAD; i++) {
-
-              // pthread_attr_t attr;
-              /*
-              if (pthread_attr_init(&attr) < 0) {
-                      perror("pthread_attr_init");
-              }
-              if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) <
-              0) { perror("pthread_attr_setdetachstate");
-              }
-              */
-              // pthread_mutex_unlock(&mtx);
-              /* old thread code.
-              if ( pthread_detach(prefetch_thread) < 0) {
-                      perror("pthread_detach");
-              }
-              */
-              /*
-              if (pthread_attr_destroy(&attr) < 0) {
-                      perror("pthread_attr_destory");
-              }
-              */
-
-              // do_prefetch(prefetch_list);
-              /*
-              prefetch_list = prefetch_list->next;
-              if (prefetch_list == NULL) {
-                      break;
-              }
-              */
-
-              //}
 
             } else {
               printf("pf list not found!\n");
@@ -671,7 +596,7 @@ int main(int argc, char* argv[]) {
                   sprintf(buf, "/proc/%d/fd/%d", tracee_pid, (int)regs.DI);
                   memset(fname, '\0', sizeof(fname));
                   readlink(buf, fname, sizeof(fname));
-                  long md = hash(fname);
+                  size_t md = hash(fname);
                   offset_node* temp_onode = getONode(o_list, md);
 
                   while (temp_onode != NULL) {

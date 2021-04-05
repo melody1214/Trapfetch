@@ -33,7 +33,7 @@ warmstart: sources/warmstart/warmstart.c
 	gcc -o bin/warmstart sources/warmstart/warmstart.c -g
 
 gatherer: sources/gatherer/*
-	gcc -o bin/gatherer sources/gatherer/gatherer.c sources/gatherer/main.c sources/gatherer/stack.c -lm -g -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
+	gcc -o bin/gatherer sources/gatherer/gatherer.c sources/gatherer/main.c sources/gatherer/stack.c -lm -g -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DSSD
 
 gatherer_32: sources/gatherer_32/*
 	gcc -o bin/gatherer_32 sources/gatherer_32/gatherer.c sources/gatherer_32/main.c sources/gatherer_32/stack.c -lm -m32 -g -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
