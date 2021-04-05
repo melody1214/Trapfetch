@@ -11,8 +11,8 @@ endif
 CC = gcc
 CFLAGS = -DHOME=$(HOME) -Wall -g -D$(DISKTYPE) -DARCH=64 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 PROGRAM = analyzer
-SOURCES = ../common/hash.c analyzer.c file.c queue.c main.c
-INCLUDES = analyzer.h file.h queue.h
+SOURCES = hashmap.c ../common/hash.c analyzer.c file.c queue.c main.c
+INCLUDES = hashmap.h analyzer.h file.h queue.h
 
 $(PROGRAM) : $(INCLUDES) $(SOURCES)
 	$(CC) $^ $(CFLAGS) -o $@.x86_64
