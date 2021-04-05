@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS_64 = -Wall -lm -g -DARCH=64 -DHOME=$(HOME)
+CFLAGS_64 = -Wall -lm -g -DARCH=64 -DHOME=$(HOME) -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 CFLAGS_32 = -Wall -lm -g -m32 -DARCH=32 
 PROGRAM = tracer
 SOURCES = tracer.c ../common/hash.c main.c

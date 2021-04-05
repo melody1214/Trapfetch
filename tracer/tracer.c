@@ -17,13 +17,13 @@ long long get_timestamp() {
 }
 
 void write_mmap_log(struct user_regs_struct *regs, char *fname) {
-  int md;
+  size_t md;
   int prot;
   char prot_to_char;
   long long off, len, timestamp;
   void *mm_start, *mm_end;
 
-  md = hash(fname);
+  md = fnv1a_hash(fname);
 #if ARCH == 32
   off = (long long)regs->ARGS_5 * PAGE_SIZE;
 #else
@@ -42,12 +42,14 @@ void write_mmap_log(struct user_regs_struct *regs, char *fname) {
   }
 
   timestamp = get_timestamp();
-  fprintf(fp_read, "m,%c,%s,%lld,%lld,%lld,%d,%p,%p\n", prot_to_char, fname,
+  fprintf(fp_read, "m,%c,%s,%lld,%lld,%lld,%zu,%p,%p\n", prot_to_char, fname,
           timestamp, off, len, md, mm_start, mm_end);
 }
 
 int get_filepath(pid_t pid, int fd, char *filename) {
-  char *buf = (char *)malloc(512 * sizeof(char));
+  char buf[512];
+  
+  memset(buf, '\0', 512 * sizeof(char));
   sprintf(buf, "/proc/%d/fd/%d", pid, fd);
   memset(filename, '\0', 512 * sizeof(char));
 

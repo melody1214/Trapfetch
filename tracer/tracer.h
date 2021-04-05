@@ -66,9 +66,9 @@
 
 #endif
 
-#define	MAX_PIDTABSIZE	256
+#define	MAX_PIDTABSIZE 1024
 
-int hash(char *filename);
+extern size_t fnv1a_hash(char *filename);
 
 struct user_regs_struct {
 #if ARCH == 32
