@@ -18,7 +18,7 @@
   ((b)->off >= (a)->off) && ((b)->off <= OFFTOLEN(a)) && \
       OFFTOLEN(b) > OFFTOLEN(a)
 
-int gen_message_digest(char *input);
+extern size_t fnv1a_hash(char *input);
 
 typedef struct _read_node {
   char path[512];
@@ -47,7 +47,7 @@ typedef struct _read_list {
   long long end_ts;
   bool is_burst;
   void *bp_offset;
-  unsigned long md;
+  size_t md;
   struct _read_list *next;
 } read_list;
 
@@ -61,7 +61,7 @@ typedef struct _mm_node {
   long long ts;
   long long off;
   long long len;
-  unsigned long md;
+  size_t md;
   void *start_addr;
   void *end_addr;
   struct _mm_node *next;
@@ -126,7 +126,7 @@ read_node *new_read_node(char *buf, int type) {
              &newnode->off, &newnode->len);
       break;
     case MMAP:
-      sscanf(buf, "%*[^,],%*[^,],%[^,],%lld,%lld,%lld,", newnode->path, &newnode->ts,
+      sscanf(buf, "%*[^,],%*[^,],%[^,],%lld,%lld,%lld,%*[^,],%*[^,],%*[^,]", newnode->path, &newnode->ts,
              &newnode->off, &newnode->len);
       break;
     default:
@@ -262,7 +262,7 @@ void insert_read_list_into_pf_list(pf_list *pl, read_list *rl) {
   pl->tail = rl;
 }
 
-bool is_trigger_duplicated(pf_list *pl, unsigned long md, void *bp_offset) {
+bool is_trigger_duplicated(pf_list *pl, size_t md, void *bp_offset) {
   read_list *tmp = pl->head;
   
   if (tmp == NULL) {

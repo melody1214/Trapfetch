@@ -52,7 +52,7 @@ bool analyze() {
     if (buf[2] == 'e') {
       // Create mmap node and insert that into mmap list.
       m = new_mmap_node(buf);
-      m->md = gen_message_digest(m->path);
+      m->md = fnv1a_hash(m->path);
       insert_node_into_mm_list(ml, m);
     }
 
@@ -301,7 +301,7 @@ void set_trigger() {
   char buf[512];
   void *ret_addr;
   void *bp_offset;
-  unsigned long md;
+  size_t md;
   long long ts;
   long long ts_idle_begin;
   long long ts_idle_end;
@@ -396,43 +396,33 @@ void generate_prefetch_data(char **argv) {
     rnode = rlist->head;
 
     if (rlist == pl->head) {
-      fprintf(fp_bp, "%ld,0\n", rlist->md);
+      fprintf(fp_bp, "%zu,0\n", rlist->md);
       while (mnode != NULL) {
-        fprintf(fp_pf, "%ld,0,%s,0,0,0,0\n", rlist->md, mnode->ptr->path);
+        fprintf(fp_pf, "%zu,0,%s,0,0,0,0\n", rlist->md, mnode->ptr->path);
         mnode = mnode->next;
       }
       while (rnode != NULL) {
-        fprintf(fp_pf, "%ld,0,%s,%lld,%lld,%ld,1\n", rlist->md, rnode->path,
+        fprintf(fp_pf, "%zu,0,%s,%lld,%lld,%ld,1\n", rlist->md, rnode->path,
                 rnode->off, rnode->len, rnode->lba);
         rnode = rnode->next;
       }
     } else {
       while (mnode != NULL) {
-        fprintf(fp_pf, "%ld,%p,%s,0,0,0,0\n", rlist->md, rlist->bp_offset,
+        fprintf(fp_pf, "%zu,%p,%s,0,0,0,0\n", rlist->md, rlist->bp_offset,
                 mnode->ptr->path);
         mnode = mnode->next;
       }
       while (rnode != NULL) {
-        fprintf(fp_pf, "%ld,%p,%s,%lld,%lld,%ld,1\n", rlist->md,
+        fprintf(fp_pf, "%zu,%p,%s,%lld,%lld,%ld,1\n", rlist->md,
                 rlist->bp_offset, rnode->path, rnode->off, rnode->len,
                 rnode->lba);
         rnode = rnode->next;
       }
     }
-    if (rlist->next != NULL) {
-      if (rlist->next->bp_offset == NULL) {
-        if (rlist == pl->head) {
-          rlist->next->md = 0;
-          rlist->next->bp_offset = 0;
-        }
-        rlist->next->md = rlist->md;
-        rlist->next->bp_offset = rlist->bp_offset;
-      } else {
-        if (rlist->bp_offset != NULL) {
-          fprintf(fp_bp, "%ld,%p\n", rlist->md, rlist->bp_offset);
-        }
-      }
-    }
+    
+    if (rlist != pl->head)
+      fprintf(fp_bp, "%zu,%p\n", rlist->md, rlist->bp_offset);
+    
     rlist = rlist->next;
   }
 
