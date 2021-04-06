@@ -67,10 +67,12 @@ void *_do_prefetch(void *list) {
 
   printf("do prefetch for sequence [md: %zu, bp_offset: %p]\n", p_list->md, p_list->bp_offset);
 
+#ifdef HDD
   while (p_node->flag == 0) {
     stat(p_node->filepath, NULL);
     p_node = p_node->next;
   }
+#endif
 
   while (p_node != NULL) {
     fd = open(p_node->filepath, O_RDONLY | O_NONBLOCK);
@@ -100,7 +102,7 @@ void *_do_prefetch(void *list) {
 
   //pthread_mutex_unlock(&mtx);
 
-  //pthread_exit((void *)0);
+  pthread_exit((void *)0);
   
   return (void *)0;
 }
@@ -122,7 +124,7 @@ int do_prefetch(pf_list *p_list) {
 
   p_list->is_prefetched = 1;
 
-#ifdef abcde
+#ifdef HDD
     /* Prefetching for launching with blocking when HDD is attached to computing device */
   if (launched == 0) {
     if (_do_prefetch((void *)p_list) < 0) {
@@ -134,17 +136,13 @@ int do_prefetch(pf_list *p_list) {
   }
 #endif
 
-  if (_do_prefetch((void *)p_list) < 0) {
-    perror("_do_prefetch");
-    return -1;
-  }
   /* for loading */
-  /*
+
   if (pthread_create(&prefetch_thread, &attr, _do_prefetch, (void *)p_list) != 0) {
     perror("pthread_create");
     return -1;
   }
-  */
+
 
   //pthread_attr_destroy(&attr);
   //pthread_mutex_unlock(&mtx);
@@ -222,8 +220,6 @@ void pf_init(pid_t tracee, char **argv) {
   }
 
   pg_list = new_pf_group_list();
-
-  total_bp_counter = -1;
 
   while (fgets(buf, BUFSIZE, fp_bp)) {
     if ((o_node = new_offset_node(buf)) == NULL) {
@@ -524,15 +520,18 @@ bool trace(void) {
             perror("restore node can't be found");
             exit(EXIT_FAILURE);
           }
+          
           /*
           if (restore_data(tracee, (void *)(regs.IP - 1), r_node) < 0) {
             perror("restore_data");
             exit(EXIT_FAILURE);
           }
           */
+          
           ptrace(PTRACE_POKEDATA, tracee, regs.IP - 1, r_node->data);
           regs.IP = regs.IP - 1;
           ptrace(PTRACE_SETREGS, tracee, NULL, &regs);
+          
 
           if (do_prefetch(r_node->plist) < 0) {
             perror("do_prefetch");
@@ -552,6 +551,13 @@ bool trace(void) {
           if (regs.ORIG_AX != SYS_mmap)
             goto restart;
 #endif
+        
+          // syscall-entry stop
+          if (insyscall == 0) {
+            insyscall = 1;
+            goto restart;
+          } 
+
           if ((int)regs.ARGS_4 < 3) {
             goto restart;
           }
@@ -565,12 +571,6 @@ bool trace(void) {
             goto restart;
           }
           */
-
-          // syscall-entry stop
-          if (insyscall == 0) {
-            insyscall = 1;
-            goto restart;
-          } 
 
           //pthread_mutex_lock(&mtx);
           
@@ -602,10 +602,13 @@ bool trace(void) {
               if (ptrace_restart(PTRACE_LISTEN, tracee, 0) < 0)
                 exit(EXIT_FAILURE);
           }
+          return true;
       }
     case PTRACE_EVENT_EXIT:
-      if (tracee == thread_leader)
+      if (tracee == thread_leader) {
         ;
+      }
+      goto restart;
     case PTRACE_EVENT_STOP:
       switch (sig) {
         case SIGSTOP:
@@ -676,6 +679,12 @@ bool startup_child(int argc, char **argv) {
 
   pf_init(tracee, argv);
 
+  /* zero values of both md and bp_offset present performing prefetching for launching application */
+  if (do_prefetch(pg_list->head) < 0) {
+    perror("do_prefetch");
+    return false;
+  }
+
   //pthread_mutex_lock(&mtx);
 
   insyscall = 0;
@@ -683,13 +692,7 @@ bool startup_child(int argc, char **argv) {
   // attach ptrace() to tracee, and stop it.
   if (ptrace_seize(tracee) < 0)
     return false;
-
-  /* zero values of both md and bp_offset present performing prefetching for launching application */
-    if (do_prefetch(pg_list->head) < 0) {
-      perror("do_prefetch");
-      return false;
-    }
-      
+ 
   kill(tracee, SIGCONT);
 
   //pthread_mutex_unlock(&mtx);

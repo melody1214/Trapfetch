@@ -21,7 +21,7 @@
 #define LOG_PATH "/home/melody/work/trapfetch/logs"
 
 #define PIDTABSIZE 256
-#define MAX_READAHEAD 131072
+#define MAX_READAHEAD 536870912
 #define BUFSIZE 512
 
 #if ARCH ==	32
