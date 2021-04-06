@@ -24,9 +24,13 @@
 #include <sys/types.h>
 #include <sys/ptrace.h>
 #include <sys/syscall.h>
+#include <pthread.h>
 
 #define PAGE_SIZE	4096
+
+//#define LOG_PATH "/dev/shm"
 #define LOG_PATH "/home/melody/work/trapfetch/logs"
+
 
 #define	OPEN_FLAG		"w"
 #define	OPEN_PERM		S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH
@@ -66,7 +70,7 @@
 
 #endif
 
-#define	MAX_PIDTABSIZE 1024
+#define	MAX_PIDTABSIZE 256
 
 extern size_t fnv1a_hash(char *filename);
 

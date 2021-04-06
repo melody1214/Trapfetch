@@ -42,8 +42,10 @@ void write_mmap_log(struct user_regs_struct *regs, char *fname) {
   }
 
   timestamp = get_timestamp();
+
   fprintf(fp_read, "m,%c,%s,%lld,%lld,%lld,%zu,%p,%p\n", prot_to_char, fname,
           timestamp, off, len, md, mm_start, mm_end);
+  fflush(fp_read);
 }
 
 int get_filepath(pid_t pid, int fd, char *filename) {
@@ -284,6 +286,12 @@ bool trace(void) {
           goto restart;
         }
 #endif
+        // syscall-entry stop
+        if (insyscall == 0) {
+          insyscall = 1;
+          goto restart;
+        }
+
         // tracing only if fd value for mmap is greater than 3
         if ((int)regs.ARGS_4 < 3) {
           goto restart;
@@ -293,15 +301,13 @@ bool trace(void) {
           goto restart;
         }
 
-        // syscall-entry stop
-        if (insyscall == 0) {
-          insyscall = 1;
-          goto restart;
-        }
-
         // syscall-exit stop
         insyscall = 0;
         if (get_filepath(tracee, (int)regs.ARGS_4, fname) < 0) {
+          goto restart;
+        }
+
+        if (fname[1] == 'm' && fname[2] == 'e' && fname[3] == 'm' && fname[4] == 'f' && fname[5] == 'd') {
           goto restart;
         }
 
@@ -320,6 +326,7 @@ bool trace(void) {
 
         // write log.
         write_mmap_log(&regs, fname);
+        goto restart;
       } else {
         stopped = ptrace(PTRACE_GETSIGINFO, tracee, 0, &si) < 0;
 
@@ -329,12 +336,14 @@ bool trace(void) {
         } else {
           if (ptrace_restart(PTRACE_LISTEN, tracee, 0) < 0) exit(EXIT_FAILURE);
         }
+        return true;
       }
     case PTRACE_EVENT_EXIT:
       if (tracee == thread_leader) {
         ;
         // printf("leader exit with nprocs : %d\n", nprocs);
       }
+      goto restart;
     case PTRACE_EVENT_STOP:
       switch (sig) {
         case SIGSTOP:
@@ -376,6 +385,10 @@ void startup_child(int argc, char **argv) {
     perror("Failed to log file creation");
     exit(EXIT_FAILURE);
   }
+
+  // adjust file's mode to append mode
+  fp_read = freopen(NULL, "a", fp_read);
+  fp_candidates = freopen(NULL, "a", fp_candidates);
 
   if ((tracee = fork()) < 0) {
     perror("fork");
