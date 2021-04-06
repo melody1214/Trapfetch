@@ -21,8 +21,14 @@
 #define	SECTOR_SIZE	512
 #define	EXTENT_MAX_COUNT	512
 
+/*
+#define READ_PATH	"/dev/shm/r."
+#define CANDIDATE_PATH	"/dev/shm/c."
+*/
+
 #define READ_PATH	"/home/melody/work/trapfetch/logs/r."
 #define CANDIDATE_PATH	"/home/melody/work/trapfetch/logs/c."
+
 
 #define	OPEN_FLAG	"a"
 
@@ -120,13 +126,25 @@ ssize_t read(int fildes, void *buf, size_t nbyte)
 		return ret;
 
 	// check whether the file is a regular file
-	lstat(fname, &fstatus);
+	stat(fname, &fstatus);
 	switch (fstatus.st_mode & S_IFMT) {
 		case S_IFREG:
 		case S_IFLNK:
 			break;
 		default:
 			return ret;
+	}
+
+	if (fname[0] != '/') {
+		return ret;
+	}
+
+	if (fname[1] == 'r' && fname[2] == 'u' && fname[3] == 'n') {
+		return ret;
+	}
+
+	if (fname[1] == 's' && fname[2] == 'y' && fname[3] == 's') {
+		return ret;
 	}
 
 	if (fstatus.st_size == 0) {
@@ -145,6 +163,8 @@ ssize_t read(int fildes, void *buf, size_t nbyte)
 
 	// record the log. {path, timestamp, file offset, length and LBN}
 	fprintf(fp_log, "r,%s,%lld,%ld,%ld\n", fname, timestamp, (long)pos, (long)ret);
+	fflush(fp_log);
+	
 
 	// return the return value of the original read.
 	return ret;
@@ -179,13 +199,25 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 	if (ret <= 0)
 		return ret;
 
-	lstat(fname, &fstatus);
+	stat(fname, &fstatus);
 	switch (fstatus.st_mode & S_IFMT) {
 		case S_IFREG:
 		case S_IFLNK:
 			break;
 		default:
 			return ret;
+	}
+
+	if (fname[0] != '/') {
+		return ret;
+	}
+
+	if (fname[1] == 'r' && fname[2] == 'u' && fname[3] == 'n') {
+		return ret;
+	}
+
+	if (fname[1] == 's' && fname[2] == 'y' && fname[3] == 's') {
+		return ret;
 	}
 
 	if (fstatus.st_size == 0) {
@@ -202,6 +234,7 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 	timestamp = gettime();
 
 	fprintf(fp_log, "r,%s,%lld,%ld,%ld\n", fname, timestamp, (long)pos, (long)(ret * size));
+	fflush(fp_log);
 
 	return ret;
 }
@@ -227,6 +260,7 @@ void *memmove(void *dest, const void *src, size_t n)
 	timestamp = gettime();
 
 	fprintf(fp_fcandidates, "%p,%lld\n", __builtin_return_address(0), timestamp);
+	fflush(fp_log);
 
 	return ret;
 }
