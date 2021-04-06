@@ -36,7 +36,7 @@
 #define	SYSCALL_STOP	(SIGTRAP | 0x80)
 #define	PT_OPTIONS		PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK | \
 						PTRACE_O_TRACECLONE | PTRACE_O_TRACEEXIT | \
-						PTRACE_O_TRACEEXEC | PTRACE_O_TRACESYSGOOD
+						PTRACE_O_TRACEEXEC | PTRACE_O_TRACESYSGOOD | PTRACE_O_MMAPTRACE
 
 #ifndef	PTRACE_EVENT_STOP
 #define	PTRACE_EVENT_STOP	128
@@ -412,6 +412,7 @@ bool trace(void) {
 
   // get a signal number.
   sig = WSTOPSIG(wait_status);
+  ptrace(PTRACE_GETREGS, tracee, 0, &regs);
 
   switch (event) {
     case 0:
@@ -423,6 +424,8 @@ bool trace(void) {
 #endif
         switch (regs.ORIG_AX) {
             case SYS_mmap:
+                printf("mmap at: [rip %p\n", (void *)regs.rip);
+            
                 // tracing only if fd value for mmap is greater than 3
                 if ((int)regs.ARGS_4 < 3) {
                 goto restart;
@@ -454,18 +457,17 @@ bool trace(void) {
                 }
 
                 if (fstatus.st_size == 0) {
-                goto restart;
+                  goto restart;
                 }
 
-                // write log.
-                write_mmap_log(&regs, fname);
+                goto restart;                            
+                
             case SYS_read:;
-                long long unsigned int rsp;
-                long long unsigned int rbp;
-                regs.
-                rsp = ptrace(PTRACE_PEEKTEXT, tracee, (void *)regs.rsp-8, NULL);
-                rbp = ptrace(PTRACE_PEEKTEXT, tracee, (void *)regs.rbp-8, NULL);
-                printf("read at: [rip %p, rbp %p, rsp %p\n", (void *)regs.rip, (void *)rbp, (void *)rsp);
+                printf("read at: [rip %p\n", (void *)regs.rip);
+                goto restart;
+            case SYS_open:
+                printf("open at: [rip %p\n", (void *)regs.rip);
+                goto restart;
             default:
                 goto restart;
         }     
@@ -478,12 +480,14 @@ bool trace(void) {
         } else {
           if (ptrace_restart(PTRACE_LISTEN, tracee, 0) < 0) exit(EXIT_FAILURE);
         }
+        return true;
       }
     case PTRACE_EVENT_EXIT:
       if (tracee == thread_leader) {
         ;
         // printf("leader exit with nprocs : %d\n", nprocs);
       }
+      goto restart;
     case PTRACE_EVENT_STOP:
       switch (sig) {
         case SIGSTOP:

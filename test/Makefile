@@ -1,6 +1,6 @@
 CC = gcc
 
-all: test-rdtsc test-sscanf test-clock test-hash
+all: test-rdtsc test-sscanf test-clock test-hash test-mkpath test-address-sub test-tracing test-threads test-hashmap test-filetype
 
 test-rdtsc: rdtsc.c rdtsc.h
 	$(CC) rdtsc.c -g -o rdtsc.x86_64
@@ -24,8 +24,13 @@ test-tracing: tracing.c
 	$(CC) tracing.c -g -o tracing.x86_64
 
 test-threads: threads.c
-	$(CC) threads.c -g -o threads.x86_64
+	$(CC) threads.c -g -o threads.x86_64 -lpthread
 
+test-hashmap: hashmap.c
+	$(CC) hashmap.c -g -o hashmap.x86_64
+
+test-filetype: filetype.c
+	$(CC) filetype.c -g -o filetype.x86_64
 
 clean:
 	rm -f *.x86_64

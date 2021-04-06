@@ -83,22 +83,11 @@ unsigned long gen_message_digest(char *input) {
     return hash(input);
 }
 
-int main() {
-    char *str1 = "/home/melody/GOG Games/Divinity Original Sin Enhanced Edition/game/libicuuc.so.54";
-    char str2[512];
-
-    memset(str2, '\0', sizeof(str2));
-    strncpy(str2, str1, sizeof(str2));
-
-    printf("%ld\n", djb_hash(str1));
-    printf("%ld\n", djb_hash(str1));
-    printf("%ld\n", fnv1a_hash(str1));
-    printf("%ld\n", fnv1a_hash(str1));   
-
-    printf("%ld\n", gen_message_digest(str2));
-    printf("%ld\n", gen_message_digest(str2));
-    printf("%ld\n", gen_message_digest(str2));
-    printf("%ld\n", gen_message_digest(str2));   
+int main(int argc, char *argv[]) {
+    printf("%ld\n", djb_hash(argv[1]));
+    printf("%ld\n", djb_hash(argv[1]));
+    printf("%ld\n", fnv1a_hash(argv[1]));
+    printf("%ld\n", fnv1a_hash(argv[1]));   
 
     return 0;
 }
