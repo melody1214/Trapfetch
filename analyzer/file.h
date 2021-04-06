@@ -8,7 +8,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define LBN_START 929523712
+#define LBN_START 8388608
 #define SECTOR_SIZE 512
 #define EXTENT_MAX_COUNT 512
 

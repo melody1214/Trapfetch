@@ -11,8 +11,8 @@
 
 #endif
 
-#define QUEUE_MAX 32
-#define BURST_THRESHOLD 2500000000
+#define QUEUE_MAX 64
+#define BURST_THRESHOLD 5000000000
 
 typedef struct _queue
 {

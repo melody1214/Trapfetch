@@ -1,7 +1,6 @@
 #include "analyzer.h"
 #include "file.h"
 #include "queue.h"
-#include "hashmap.h"
 
 FILE *fp_read;
 FILE *fp_candidates;
@@ -10,32 +9,26 @@ queue q;
 read_list *rl;
 mm_list *ml;
 pf_list *pl;
+trigger_list *tl;
 
-struct hashmap *map;
+struct hashmap_s hashmap;
+const unsigned int map_initial_size = 2;
 
-struct trigger {
-  char *key;
-  long long value;
-};
+static int iterates_with_insert_trigger(void *const context, struct hashmap_element_s* const e) {
+  trigger_t *tn;
+  tn = new_trigger_node(e);
+  insert_trigger_node(tl, tn);
 
-int trigger_compare(const void *a, const void *b, void *udata) {
-    const struct trigger *ua = a;
-    const struct trigger *ub = b;
-    return strcmp(ua->key, ub->key);
+  return 0;
 }
 
-bool trigger_iter(const void *item, void *udata) {
-    const struct trigger *tg = item;
-    if (tg->value == 0) {
-      hashmap_delete(map, &(struct trigger){ .key= tg->key}); 
-    }
-    printf("trigger: %s, %lld\n", tg->key, tg->value);
-    return true;
-}
+static int iterate_with_remove(void *const context, struct hashmap_element_s* const e) {
+  printf("key: %s, value: %lld\n", e->key, (long long)e->data);
+  if (e->data == 0) {
+    return -1;
+  }
 
-uint64_t trigger_hash(const void *item, uint64_t seed0, uint64_t seed1) {
-    const struct trigger *tg = item;
-    return hashmap_sip(tg->key, strlen(tg->key), seed0, seed1);
+  return 0;
 }
 
 // an_init prepares to begin to analyze traced data.
@@ -55,6 +48,8 @@ bool an_init(char **argv) {
   ml = init_mm_list();
   // initialize prefetch group list.
   pl = init_pf_list();
+  // initialize trigger list.
+  tl = init_trigger_list();
   // initialize queue.
   queue_init(&q);
 
@@ -328,56 +323,62 @@ void generate_meta_list() {
 
 void set_trigger() {
   char buf[512];
-  char key[64];
-  void *ret_addr;
+  hashmap_t *map_t;
   void *bp_offset;
+  void *element;
   size_t md;
-  long long ts;
   long long ts_idle_begin;
   long long ts_idle_end;
   mm_node *mnode;
+  trigger_t *tn;
 
   read_list *rlist = pl->head;
 
   rlist->bp_offset = 0;
   rlist->md = 0;
 
-  // create hashmap for candidates of trigger
-  map = hashmap_new(sizeof(struct trigger), 0, 0, 0, 
-                                    trigger_hash, trigger_compare, NULL);
-
+  if (0 != hashmap_create(map_initial_size, &hashmap)) {
+    perror("hashmap_create");
+    exit(EXIT_FAILURE);
+    // error!
+  }
 
   while (fgets(buf, sizeof(buf), fp_candidates)) {
-    memset(key, '\0', 64 * sizeof(char));
-    sscanf(buf, "%s,%lld", key, &ts);
-    if (hashmap_get(map, &(struct trigger){ .key= key}) == NULL) {
-      hashmap_set(map, &(struct trigger){ .key= key, .value= ts});
-    } else {
-      hashmap_set(map, &(struct trigger){ .key= key, .value= 0}); 
+    map_t = (hashmap_t *)malloc(sizeof(hashmap_t));
+    sscanf(buf, "%[^,],%lld", map_t->key, &map_t->ts);
+    
+    if ((element = hashmap_get(&hashmap, map_t->key, strlen(map_t->key))) == NULL) {
+      hashmap_put(&hashmap, map_t->key, strlen(map_t->key), (void *)map_t->ts);
+    } else{
+      hashmap_put(&hashmap, map_t->key, strlen(map_t->key), (void *)0);
     }
   }
 
   printf("******** hashmap scan start *********\n");
-  hashmap_scan(map, trigger_iter, NULL);
+  hashmap_iterate_pairs(&hashmap, iterate_with_remove, NULL);
   printf("******** hashmap scan end *********\n");
   printf("******** hashmap scan start *********\n");
-  hashmap_scan(map, trigger_iter, NULL);
+  hashmap_iterate_pairs(&hashmap, iterates_with_insert_trigger, NULL);
   printf("******** hashmap scan end *********\n");
 
-  rewind(fp_candidates);
+  tn = tl->head;
+  while (tn != NULL) {
+    printf("%p, %lld\n", tn->ret_addr, tn->ts);
+    tn = tn->next;
+  }
 
   while (rlist->next != NULL) {
     ts_idle_begin = rlist->end_ts;
     ts_idle_end = rlist->next->start_ts;
 
-    while (fgets(buf, sizeof(buf), fp_candidates)) {
-      sscanf(buf, "%p,%lld", &ret_addr, &ts);
-
-      if (ts < ts_idle_begin) {
+    tn = tl->head;
+    while (tn != NULL) {
+      if (tn->ts < ts_idle_begin) {
+        tn = tn->next;
         continue;
       }
 
-      if (ts > ts_idle_end) {
+      if (tn->ts > ts_idle_end) {
         break;
       }
 
@@ -388,7 +389,7 @@ void set_trigger() {
       mnode = ml->head;
 
       while (mnode != NULL) {
-        if (mnode->ts > ts) {
+        if (mnode->ts > tn->ts) {
           break;
         }
 
@@ -396,14 +397,10 @@ void set_trigger() {
           break;
         }
 
-        if ((mnode->start_addr <= ret_addr) && (mnode->end_addr >= ret_addr)) {
-          bp_offset = (void *)((long long)ret_addr - (long long)mnode->start_addr);
+        if ((mnode->start_addr <= tn->ret_addr) && (mnode->end_addr >= tn->ret_addr)) {
+          bp_offset = (void *)((long long)tn->ret_addr - (long long)mnode->start_addr);
           md = mnode->md;
-          if (is_trigger_duplicated(pl, md, bp_offset)) {
-            printf("triggering...\n");
-            mnode = mnode->next;
-            continue;
-          }
+          
           rlist->next->md = md;
           rlist->next->bp_offset = bp_offset;
           break;
@@ -411,6 +408,7 @@ void set_trigger() {
 
         mnode = mnode->next;
       }
+      tn = tn->next;
     }
 
     if (rlist->next->bp_offset == NULL) {
@@ -446,26 +444,32 @@ void generate_prefetch_data(char **argv) {
   fp_pf = get_fd(argv[1], PATH_PF, OPEN_WRITE);
 
   while (rlist != NULL) {
+#ifdef HDD
     mnode = rlist->meta_head;
+#endif
     rnode = rlist->head;
 
     if (rlist == pl->head) {
       fprintf(fp_bp, "%zu,0\n", rlist->md);
+#ifdef HDD
       while (mnode != NULL) {
         fprintf(fp_pf, "%zu,0,%s,0,0,0,0\n", rlist->md, mnode->ptr->path);
         mnode = mnode->next;
       }
+#endif
       while (rnode != NULL) {
         fprintf(fp_pf, "%zu,0,%s,%lld,%lld,%ld,1\n", rlist->md, rnode->path,
                 rnode->off, rnode->len, rnode->lba);
         rnode = rnode->next;
       }
     } else {
+#ifdef HDD
       while (mnode != NULL) {
         fprintf(fp_pf, "%zu,%p,%s,0,0,0,0\n", rlist->md, rlist->bp_offset,
                 mnode->ptr->path);
         mnode = mnode->next;
       }
+#endif
       while (rnode != NULL) {
         fprintf(fp_pf, "%zu,%p,%s,%lld,%lld,%ld,1\n", rlist->md,
                 rlist->bp_offset, rnode->path, rnode->off, rnode->len,

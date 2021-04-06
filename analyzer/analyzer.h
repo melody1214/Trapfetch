@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "hashmap.h"
 
 #define IS_BURST 1
 
@@ -71,6 +72,23 @@ typedef struct _mm_list {
   mm_node *head;
   mm_node *tail;
 } mm_list;
+
+typedef struct trigger_node {
+  void *ret_addr;
+  long long ts;
+  struct trigger_node *next;
+} trigger_t;
+
+typedef struct {
+  trigger_t *head;
+  trigger_t *tail;
+} trigger_list;
+
+
+typedef struct {
+  char key[64];
+  long long ts;
+} hashmap_t;
 
 read_list *init_read_list() {
   read_list *newlist = (read_list *)malloc(sizeof(read_list));
@@ -280,5 +298,78 @@ bool is_trigger_duplicated(pf_list *pl, size_t md, void *bp_offset) {
     tmp = tmp->next;
   }
 }
+
+
+trigger_list *init_trigger_list() {
+  trigger_list *newlist = (trigger_list *)malloc(sizeof(trigger_list));
+
+  newlist->head = NULL;
+  newlist->tail = NULL;
+
+  return newlist;
+}
+
+trigger_t *new_trigger_node(struct hashmap_element_s * const e) {
+  trigger_t *newnode = (trigger_t *)malloc(sizeof(trigger_t));
+
+  newnode->ret_addr = (void *)strtol(e->key, 0, 16);
+  newnode->ts = (long long)e->data;
+  newnode->next = NULL;
+
+  return newnode;
+}
+
+void insert_trigger_node(trigger_list *tl, trigger_t *tn) {
+  trigger_t *t = tl->head;
+  trigger_t *tmp;
+
+  if (t == NULL) {
+    tl->head = tn;
+    tl->tail = tn;
+    return;
+  }
+
+  while (t->next != NULL) {
+    if (t->ts < tn->ts) {
+      t = t->next;
+      continue;
+    }
+    
+    if (t->ts > tn->ts) {
+      break;
+    }
+  }
+
+  if (t->ts < tn->ts) {
+    if (t->next == NULL) {
+      tl->tail = tn;
+    }
+    t->next = tn;
+    return;
+  }
+
+  if (t->ts > tn->ts) {
+    tmp = (trigger_t *)malloc(sizeof(trigger_t));
+
+    memcpy(tmp, t, sizeof(trigger_t));
+    memcpy(t, tn, sizeof(trigger_t));
+
+    t->next = tmp;
+
+    if (tmp->next == NULL) {
+      tl->tail = tmp;
+    }
+
+    free(tn);
+  }
+}
+
+/*
+static int iterate_print(void *const context, struct hashmap_element_s* const e) {
+  printf("key: %s, value: %lld\n", e->key, (long long)e->data);
+  
+  return 0;
+}
+*/
 
 #endif /* ANALYZER_HEADER_INCLUDED */

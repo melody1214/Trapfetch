@@ -74,6 +74,8 @@ bool is_burst(queue *q)
     read_node *rear = &q->ele[q->rear];
     read_node *front = &q->ele[q->front];
 
+    printf("queue time: %lld\n", rear->ts - front->ts);
+
     if ((rear->ts - front->ts) < BURST_THRESHOLD)
     {
         return true;
