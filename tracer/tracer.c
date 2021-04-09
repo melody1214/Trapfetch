@@ -368,7 +368,6 @@ void startup_child(int argc, char **argv) {
 
   int wait_status;
   char fname[512];
-
   char *dirc; 
   char *basec;
   char *dname; // for library path of the target application
@@ -404,9 +403,10 @@ void startup_child(int argc, char **argv) {
     dname = dirname(dirc);
     bname = basename(basec);
 
+    
     // set library path to target application's directory.
     setenv("LD_LIBRARY_PATH", dname, 1);
-
+    
     // TARGET_PROGRAM is used in writing a log by the tracer and wrapper.
     setenv("TARGET_PROGRAM", bname, 1);
     chdir(dname);
@@ -422,6 +422,14 @@ void startup_child(int argc, char **argv) {
 
     printf("getenv(LD_PRELOAD) : %s\n", getenv("LD_PRELOAD"));
     printf("getenv(TARGET_PROGRAM) : %s\n", getenv("TARGET_PROGRAM"));
+
+    if (strstr(argv[1], ".sh")) {
+      char *arguments[10] = { "/bin/sh", argv[1], argv[2], argv[3], NULL};
+      if (execv(arguments[0], arguments) < 0) {
+        perror("execve");
+        exit(EXIT_FAILURE);
+      }
+    }
 
     if (execv(argv[1], &argv[1]) < 0) {
       perror("execv");
