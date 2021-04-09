@@ -35,6 +35,39 @@
 static FILE *fp_log = NULL;
 static FILE *fp_fcandidates = NULL;
 
+static int is_wrapper_init = 0;
+
+__attribute__((constructor))
+void wrapper_init() {
+	char path[512];
+	
+	if (fp_log == NULL) {
+		memset(path, '\0', sizeof(path));
+		strcpy(path, READ_PATH);
+		strcat(path, basename(getenv("TARGET_PROGRAM")));
+		fp_log = fopen(path, OPEN_FLAG);
+	}
+
+	if (fp_fcandidates == NULL) {
+		memset(path, '\0', sizeof(path));
+		strcpy(path, CANDIDATE_PATH);
+		strcat(path, basename(getenv("TARGET_PROGRAM")));
+		fp_fcandidates = fopen(path, OPEN_FLAG);
+	}
+
+	is_wrapper_init = 1;
+}
+
+__attribute__((destructor))
+void wrapper_exit() {
+	fflush(fp_log);
+	fflush(fp_fcandidates);
+
+	fclose(fp_log);
+	fclose(fp_fcandidates);
+}
+
+
 long long gettime()
 {
 	struct timespec ts;
@@ -121,6 +154,9 @@ ssize_t read(int fildes, void *buf, size_t nbyte)
 	// call original read and obtain the number of bytes read(return value).
 	ret = (*original_read)(fildes, buf, nbyte);
 
+	if (!is_wrapper_init)
+		return ret;
+
 	// 0 : end of file, -1 : error
 	if (ret <= 0)
 		return ret;
@@ -151,13 +187,6 @@ ssize_t read(int fildes, void *buf, size_t nbyte)
 		return ret;
 	}
 
-	if (fp_log == NULL) {
-		memset(path, '\0', sizeof(path));
-		strcpy(path, READ_PATH);
-		strcat(path, basename(getenv("TARGET_PROGRAM")));
-		fp_log = fopen(path, OPEN_FLAG);
-	}
-
 	// get timestamp.
 	timestamp = gettime();
 
@@ -165,7 +194,6 @@ ssize_t read(int fildes, void *buf, size_t nbyte)
 	fprintf(fp_log, "r,%s,%lld,%ld,%ld\n", fname, timestamp, (long)pos, (long)ret);
 	fflush(fp_log);
 	
-
 	// return the return value of the original read.
 	return ret;
 }
@@ -196,6 +224,9 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 	original_fread = dlsym(RTLD_NEXT, "fread");
 	ret = (*original_fread)(ptr, size, nmemb, stream);
 
+	if (!is_wrapper_init)
+		return ret;
+
 	if (ret <= 0)
 		return ret;
 
@@ -224,13 +255,6 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 		return ret;
 	}
 
-	if (fp_log == NULL) {
-		memset(path, '\0', sizeof(path));
-		strcpy(path, READ_PATH);
-		strcat(path, basename(getenv("TARGET_PROGRAM")));
-		fp_log = fopen(path, OPEN_FLAG);
-	}
-
 	timestamp = gettime();
 
 	fprintf(fp_log, "r,%s,%lld,%ld,%ld\n", fname, timestamp, (long)pos, (long)(ret * size));
@@ -243,24 +267,17 @@ void *memmove(void *dest, const void *src, size_t n)
 {
 	void *(*original_memmove)(void *, const void *, size_t);
 	void *ret;
-	char path[512];
 	long long timestamp;
 
 	original_memmove = dlsym(RTLD_NEXT, "memmove");
 	ret = original_memmove(dest, src, n);
 
-	if (fp_fcandidates == NULL) {
-		memset(path, '\0', sizeof(path));
-		strcpy(path, CANDIDATE_PATH);
-		strcat(path, basename(getenv("TARGET_PROGRAM")));
-		fp_fcandidates = fopen(path, OPEN_FLAG);
-	}
-
+	if (!is_wrapper_init)
+		return ret;
 
 	timestamp = gettime();
 
 	fprintf(fp_fcandidates, "%p,%lld\n", __builtin_return_address(0), timestamp);
-	fflush(fp_log);
 
 	return ret;
 }
@@ -269,18 +286,13 @@ char *strcpy(char *dest, const char *src)
 {
 	char *(*original_strcpy)(char *dest, const char *src);
 	char *ret;
-	char path[512];
 	long long timestamp;
 
 	original_strcpy = dlsym(RTLD_NEXT, "strcpy");
 	ret = original_strcpy(dest, src);
-	
-	if (fp_fcandidates == NULL) {
-		memset(path, '\0', sizeof(path));
-		strcpy(path, CANDIDATE_PATH);
-		strcat(path, basename(getenv("TARGET_PROGRAM")));
-		fp_fcandidates = fopen(path, OPEN_FLAG);
-	}
+
+	if (!is_wrapper_init)
+		return ret;
 
 	timestamp = gettime();
 
@@ -293,18 +305,13 @@ void *memcpy(void *dest, const void *src, size_t n)
 {
 	void *(*original_memcpy)(void *dest, const void *src, size_t n);
 	void *ret;
-	char path[512];
 	long long timestamp;
 
 	original_memcpy = dlsym(RTLD_NEXT, "memcpy");
 	ret = original_memcpy(dest, src, n);
 
-	if (fp_fcandidates == NULL) {
-		memset(path, '\0', sizeof(path));
-		strcpy(path, CANDIDATE_PATH);
-		strcat(path, basename(getenv("TARGET_PROGRAM")));
-		fp_fcandidates = fopen(path, OPEN_FLAG);
-	}
+	if (!is_wrapper_init)
+		return ret;
 
 	timestamp = gettime();
 
@@ -317,18 +324,13 @@ size_t strlen(const char *s)
 {
 	size_t (*original_strlen)(const char *s);
 	size_t ret;
-	char path[512];
 	long long timestamp;
 
 	original_strlen = dlsym(RTLD_NEXT, "strlen");
 	ret = (*original_strlen)(s);
 
-	if (fp_fcandidates == NULL) {
-		memset(path, '\0', sizeof(path));
-		strcpy(path, CANDIDATE_PATH);
-		strcat(path, basename(getenv("TARGET_PROGRAM")));
-		fp_fcandidates = fopen(path, OPEN_FLAG);
-	}
+	if (!is_wrapper_init)
+		return ret;
 
 	timestamp = gettime();
 
@@ -337,3 +339,20 @@ size_t strlen(const char *s)
 	return ret;
 }
 
+/*
+clock_t clock(void) {
+	clock_t (*original_clock)(void);
+	clock_t ret;
+	long long timestamp;
+
+	original_clock = dlsym(RTLD_NEXT, "clock");
+	ret = (*original_clock)();
+
+	if (!is_wrapper_init)
+		return ret;
+
+	timestamp = gettime();
+
+	fprintf(fp_fcandidates, "%p,%lld\n", __builtin_return_address(0), timestamp);
+}
+*/
