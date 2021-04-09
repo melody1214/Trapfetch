@@ -9,7 +9,7 @@ else
 endif
 
 CC = gcc
-CFLAGS = -DHOME=$(HOME) -Wall -g -D$(DISKTYPE) -DARCH=64 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
+CFLAGS = -DHOME=$(HOME) -Wall -g -D$(DISKTYPE) -DARCH=64 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DFORCED_SET_BURST_THRESHOLD
 PROGRAM = analyzer
 SOURCES = ../common/hash.c analyzer.c file.c queue.c main.c
 INCLUDES = hashmap.h analyzer.h file.h queue.h

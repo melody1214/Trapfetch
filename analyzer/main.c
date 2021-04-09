@@ -10,6 +10,7 @@ extern bool merging_read_list();
 extern void generate_meta_list();
 extern void set_trigger();
 extern void generate_prefetch_data(char **argv);
+extern void burst_detection();
 
 int main(int argc, char **argv) {
   if (!an_init(argv)) {
@@ -22,6 +23,8 @@ int main(int argc, char **argv) {
   while (analyze()) {
     ;
   }
+
+  burst_detection();
 
   reordering_pf_list();
 

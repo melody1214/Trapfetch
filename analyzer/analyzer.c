@@ -13,6 +13,8 @@ trigger_list *tl;
 
 struct hashmap_s hashmap;
 const unsigned int map_initial_size = 2;
+double queueing_times[512];
+int cnt_read_list;
 
 static int iterates_with_insert_trigger(void *const context, struct hashmap_element_s* const e) {
   trigger_t *tn;
@@ -23,7 +25,7 @@ static int iterates_with_insert_trigger(void *const context, struct hashmap_elem
 }
 
 static int iterate_with_remove(void *const context, struct hashmap_element_s* const e) {
-  printf("key: %s, value: %lld\n", e->key, (long long)e->data);
+  //printf("key: %s, value: %lld\n", e->key, (long long)e->data);
   if (e->data == 0) {
     return -1;
   }
@@ -120,9 +122,13 @@ full:
     exit(EXIT_FAILURE);
   }
 
+  
   rl->start_ts = rl->head->ts;
   rl->end_ts = rl->tail->ts;
+  rl->queueing_time = get_queueing_time(&q);
+  cnt_read_list++;
 
+/*
   // The time for fully queueing is less than burst threshold.
   if (is_burst(&q)) {
     rl->is_burst = IS_BURST;
@@ -131,18 +137,78 @@ full:
   else {
     rl->is_burst = !IS_BURST;
   }
+  */
+
+  insert_read_list_into_pf_list(pl, rl);
 
   if (is_last) {
     pl->tail = rl;
+    rl->next = NULL;
     return false;
   }
 
-  insert_read_list_into_pf_list(pl, rl);
 
   rl->next = init_read_list();
   rl = rl->next;
 
   return true;
+}
+
+void burst_detection() {
+  read_list *tmp;
+  double average = 0;
+  double queueing_sum = 0;
+  double min = 0;
+  double burst_threshold = 0;
+  double cnt = 0;
+  double sum = 0;
+
+  tmp = pl->head;
+  min = tmp->queueing_time;
+
+  while (tmp != NULL) {
+    queueing_sum = queueing_sum + tmp->queueing_time;
+    if (tmp->queueing_time < min) {
+      min = tmp->queueing_time;
+    }
+    tmp = tmp->next;
+  }
+
+  average = queueing_sum / cnt_read_list;
+  burst_threshold = average;
+
+  //printf("burst threshold: %f\n", burst_threshold);
+  tmp = pl->head;
+
+  while (tmp != NULL) {
+    if (tmp->queueing_time > average) {
+      sum = sum + tmp->queueing_time;
+      cnt++;
+    }
+    tmp = tmp->next;
+  }
+
+  average = sum / cnt;
+  burst_threshold = average;
+
+  
+#ifdef FORCED_SET_BURST_THRESHOLD
+  burst_threshold = BURST_THRESHOLD;
+#endif
+  printf("burst threshold: %f\n", burst_threshold);
+
+  tmp = pl->head;
+
+  while (tmp != NULL) {
+    //if (tmp->queueing_time - average > burst_threshold - average) {
+    if (tmp->queueing_time > burst_threshold) {
+      tmp->is_burst = !IS_BURST;
+    } else {
+      tmp->is_burst = IS_BURST;
+    }
+    tmp = tmp->next;
+  }
+   
 }
 
 void reordering_pf_list() {
@@ -354,18 +420,16 @@ void set_trigger() {
     }
   }
 
-  printf("******** hashmap scan start *********\n");
   hashmap_iterate_pairs(&hashmap, iterate_with_remove, NULL);
-  printf("******** hashmap scan end *********\n");
-  printf("******** hashmap scan start *********\n");
   hashmap_iterate_pairs(&hashmap, iterates_with_insert_trigger, NULL);
-  printf("******** hashmap scan end *********\n");
 
+  /*  
   tn = tl->head;
   while (tn != NULL) {
     printf("%p, %lld\n", tn->ret_addr, tn->ts);
     tn = tn->next;
   }
+  */
 
   while (rlist->next != NULL) {
     ts_idle_begin = rlist->end_ts;
@@ -436,8 +500,9 @@ void generate_prefetch_data(char **argv) {
   FILE *fp_bp;
   FILE *fp_pf;
   read_node *rnode;
+#ifdef HDD
   meta_node *mnode;
-
+#endif
   read_list *rlist = pl->head;
 
   fp_bp = get_fd(argv[1], PATH_BP, OPEN_WRITE);

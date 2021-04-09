@@ -69,6 +69,18 @@ bool is_full(queue *q)
     return false;
 }
 
+double get_queueing_time(queue *q)
+{
+    double ts;
+
+    read_node *rear = &q->ele[q->rear];
+    read_node *front = &q->ele[q->front];
+
+    ts = rear->ts - front->ts;
+
+    return ts;
+}
+
 bool is_burst(queue *q)
 {
     read_node *rear = &q->ele[q->rear];

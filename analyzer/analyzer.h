@@ -47,6 +47,7 @@ typedef struct _read_list {
   long long start_ts;
   long long end_ts;
   bool is_burst;
+  double queueing_time;
   void *bp_offset;
   size_t md;
   struct _read_list *next;

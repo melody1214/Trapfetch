@@ -11,8 +11,8 @@
 
 #endif
 
-#define QUEUE_MAX 64
-#define BURST_THRESHOLD 5000000000
+#define QUEUE_MAX 32
+#define BURST_THRESHOLD 2500000000
 
 typedef struct _queue
 {
@@ -28,5 +28,6 @@ read_node *dequeue(queue *q);
 bool is_empty(queue *q);
 bool is_full(queue *q);
 bool is_burst(queue *q);
+double get_queueing_time(queue *q);
 
 #endif /* _QUEUE_HEADER_INCLUDED */
