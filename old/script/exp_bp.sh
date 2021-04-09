@@ -76,7 +76,7 @@ then
 #		fi
 		#bno_plot bno*
 		
-		rm -rf bno* *iops* sys_* *mbps*
+		#rm -rf bno* *iops* sys_* *mbps*
 		mv pf.$APPNAME.$3.bin $EXPPATH/$APPNAME/trace/pf.$APPNAME.$3.bin
 
 		sed -e 's/+/\t/' -e "/$APPNAME\|caller/!d" $EXPPATH/$APPNAME/origin/pf.$APPNAME.blktrace.$3 > $EXPPATH/$APPNAME/subst/pf.$APPNAME.blktrace.$3
@@ -97,7 +97,7 @@ then
 #		fi
 #		#bno_plot bno*
 		
-		rm -rf bno* *iops* sys_* *mbps*
+		#rm -rf bno* *iops* sys_* *mbps*
 		mv normal.$APPNAME.$3.bin $EXPPATH/$APPNAME/trace/normal.$APPNAME.$3.bin
 
 		sed -e 's/+/\t/' -e "/$APPNAME\|caller/!d" $EXPPATH/$APPNAME/origin/normal.$APPNAME.blktrace.$3 > $EXPPATH/$APPNAME/subst/normal.$APPNAME.blktrace.$3
