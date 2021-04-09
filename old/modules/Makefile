@@ -1,7 +1,6 @@
-obj-m := lba_check.o
+obj-m := lbn_checker.o
 
 all:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules_install
+	make -C /lib/modules/$(shell uname -r)/build/ M=$(PWD) modules
 clean:
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+	make -C /lib/modules/$(shell uname -r)/build/ M=$(PWD) clean

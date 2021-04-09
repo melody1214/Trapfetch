@@ -28,10 +28,6 @@ static ssize_t my_read(struct file *fp, char __user *buf, size_t len, loff_t *of
 	int err;
 	char *data = PDE_DATA(file_inode(fp));
 
-	if ((int)(*off) > buf_count) {
-		return 0;
-	}
-
 	if (!(data)) {
 		printk(KERN_INFO "[lbn_checker] read data is NULL");
 		return 0;
@@ -42,21 +38,15 @@ static ssize_t my_read(struct file *fp, char __user *buf, size_t len, loff_t *of
 		return len;
 	}
 
-	len = buf_count + 1; // +1 to read the \0
 	err = copy_to_user(buf, data, len);
-
 	printk(KERN_INFO "[lbn_checker] logical block %s has been accessed to read", buf);
-	*off = len;
-
-	if (err) {
-		printk(KERN_INFO "[lbn_checker] Error in copying data");
-	} 
-
+	
 	return len;
 }
 
 static ssize_t my_write(struct file *fp, const char __user *buf, size_t len, loff_t *off)
 {
+	/*
 	int i;
 	char *data = PDE_DATA(file_inode(fp));
 
@@ -69,17 +59,14 @@ static ssize_t my_write(struct file *fp, const char __user *buf, size_t len, lof
 	}
 
 	data[len - 1] = '\0';
-	
+	*/
 
-	//strcpy(buffer, buf);
+	strcpy(buffer, buf);
 
 	lba = 0;
 
 	for (buf_count = 0; buf_count < len-1; buf_count++)
 		lba = (lba<<3)+(lba<<1)+buf[buf_count]-'0';
-
-	*off = (int)len;
-	buf_count = len - 1;
 
 	evaluator_lba = (long)lba;
 	printk(KERN_ALERT "my_write function %ld called : %d, buffer count : %d", len, lba, buf_count);
@@ -112,7 +99,6 @@ int proc_init(void)
 		return -ENOMEM;
 	}
 
-	buf_count = DATA_SIZE;
 	buffer = (char *)kmalloc(DATA_SIZE, GFP_KERNEL);
 
 	if(buffer != NULL)
