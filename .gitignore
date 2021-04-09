@@ -59,7 +59,7 @@ logs/
 bin/
 
 # Experiment files
-experiments/
+exp/
 
 # vscode configurations
 .vscode/
