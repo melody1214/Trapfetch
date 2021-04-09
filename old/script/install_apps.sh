@@ -8,3 +8,5 @@ sudo add-apt-repository ppa:speed-dreams/ppa
 
 sudo apt update
 
+# only office
+sudo snap install onlyoffice-desktopeditors
