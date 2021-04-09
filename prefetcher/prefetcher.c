@@ -663,6 +663,15 @@ bool startup_child(int argc, char **argv) {
 
     free(dirc);
 
+    // if the target application is executed through shell script
+    if (strstr(argv[1], ".sh")) {
+      char *arguments[10] = { "/bin/sh", argv[1], NULL};
+      if (execv(arguments[0], arguments) < 0) {
+        perror("execve");
+        exit(EXIT_FAILURE);
+      }
+    }
+
     if (execv(argv[1], &argv[1]) < 0) {
       perror("execv");
       return false;
