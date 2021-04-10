@@ -102,6 +102,10 @@ void *_do_prefetch(void *list) {
 
   //pthread_mutex_unlock(&mtx);
 
+#ifdef HDD
+if (launched == 0)
+	return (void *)0;
+#endif
   pthread_exit((void *)0);
   
   return (void *)0;
