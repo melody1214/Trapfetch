@@ -204,9 +204,6 @@ bool trace(void) {
 
     if (wait_errno == EINTR) return true;
     if (nprocs == 0 && wait_errno == ECHILD) {
-#ifdef MEASURE_OVERHEAD
-      printf("num of syscall : %d\n", num_of_syscall);
-#endif
       return false;
     }
 
@@ -444,7 +441,8 @@ void startup_child(int argc, char **argv) {
   }
 
 #ifdef MEASURE_OVERHEAD
-  if (signal(SIGINT, sig_handler) == SIG_ERR) {
+  printf("tracer start with pid : %d\n", getpid());
+  if (signal(SIGUSR1, sig_handler) == SIG_ERR) {
     printf("\n can't catch SIGINT\n");
     exit(EXIT_FAILURE);
   }
