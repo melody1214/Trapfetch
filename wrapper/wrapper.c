@@ -40,6 +40,7 @@ static int is_wrapper_init = 0;
 __attribute__((constructor))
 void wrapper_init() {
 	char path[512];
+	int i;
 	
 	if (fp_log == NULL) {
 		memset(path, '\0', sizeof(path));
@@ -56,6 +57,7 @@ void wrapper_init() {
 	}
 
 	is_wrapper_init = 1;
+	printf("wrapper init completes\n");
 }
 
 __attribute__((destructor))
@@ -76,6 +78,13 @@ long long gettime()
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 
 	return (long long) (ts.tv_sec * pow(10, 9) + ts.tv_nsec);
+}
+
+void write_candidate_log(void *retaddr) {
+	long long ts;
+
+	ts = gettime();
+	fprintf(fp_fcandidates, "%p,%lld\n", retaddr, ts);
 }
 
 /*
@@ -267,7 +276,7 @@ void *memmove(void *dest, const void *src, size_t n)
 {
 	void *(*original_memmove)(void *, const void *, size_t);
 	void *ret;
-	long long timestamp;
+	void *retaddr;
 
 	original_memmove = dlsym(RTLD_NEXT, "memmove");
 	ret = original_memmove(dest, src, n);
@@ -275,9 +284,9 @@ void *memmove(void *dest, const void *src, size_t n)
 	if (!is_wrapper_init)
 		return ret;
 
-	timestamp = gettime();
+	retaddr = __builtin_return_address(0);
 
-	fprintf(fp_fcandidates, "%p,%lld\n", __builtin_return_address(0), timestamp);
+	write_candidate_log(retaddr);
 
 	return ret;
 }
@@ -286,17 +295,16 @@ char *strcpy(char *dest, const char *src)
 {
 	char *(*original_strcpy)(char *dest, const char *src);
 	char *ret;
-	long long timestamp;
-
+	void *retaddr;
+	
 	original_strcpy = dlsym(RTLD_NEXT, "strcpy");
 	ret = original_strcpy(dest, src);
 
 	if (!is_wrapper_init)
 		return ret;
 
-	timestamp = gettime();
-
-	fprintf(fp_fcandidates, "%p,%lld\n", __builtin_return_address(0), timestamp);
+	retaddr = __builtin_return_address(0);
+	write_candidate_log(retaddr);
 
 	return ret;
 }
@@ -305,7 +313,7 @@ void *memcpy(void *dest, const void *src, size_t n)
 {
 	void *(*original_memcpy)(void *dest, const void *src, size_t n);
 	void *ret;
-	long long timestamp;
+	void *retaddr;
 
 	original_memcpy = dlsym(RTLD_NEXT, "memcpy");
 	ret = original_memcpy(dest, src, n);
@@ -313,10 +321,9 @@ void *memcpy(void *dest, const void *src, size_t n)
 	if (!is_wrapper_init)
 		return ret;
 
-	timestamp = gettime();
+	retaddr = __builtin_return_address(0);
 
-	fprintf(fp_fcandidates, "%p,%lld\n", __builtin_return_address(0), timestamp);
-
+	write_candidate_log(retaddr);
 	return ret;
 }
 
@@ -324,7 +331,7 @@ size_t strlen(const char *s)
 {
 	size_t (*original_strlen)(const char *s);
 	size_t ret;
-	long long timestamp;
+	void *retaddr;
 
 	original_strlen = dlsym(RTLD_NEXT, "strlen");
 	ret = (*original_strlen)(s);
@@ -332,9 +339,9 @@ size_t strlen(const char *s)
 	if (!is_wrapper_init)
 		return ret;
 
-	timestamp = gettime();
+	retaddr = __builtin_return_address(0);
 
-	fprintf(fp_fcandidates, "%p,%lld\n", __builtin_return_address(0), timestamp);
+	write_candidate_log(retaddr);
 
 	return ret;
 }
