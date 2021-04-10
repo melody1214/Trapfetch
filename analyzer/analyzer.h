@@ -331,7 +331,7 @@ void insert_trigger_node(trigger_list *tl, trigger_t *tn) {
   }
 
   while (t->next != NULL) {
-    if (t->ts < tn->ts) {
+    if (t->ts <= tn->ts) {
       t = t->next;
       continue;
     }

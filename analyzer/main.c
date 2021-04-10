@@ -37,13 +37,13 @@ int main(int argc, char **argv) {
   while (merging_read_list());
 #endif
 
-  set_trigger();
-
 #ifdef HDD
   // Sorting and merging again after setting triggers for HDD only
   while (reordering_read_list());
   while (merging_read_list());
 #endif
+
+  set_trigger();
 
   generate_meta_list();
   

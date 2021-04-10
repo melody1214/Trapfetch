@@ -122,7 +122,12 @@ full:
     exit(EXIT_FAILURE);
   }
 
-  
+  if (rl->head == NULL) {
+    if (is_last) {
+      return false;
+    }
+  }
+
   rl->start_ts = rl->head->ts;
   rl->end_ts = rl->tail->ts;
   rl->queueing_time = get_queueing_time(&q);
