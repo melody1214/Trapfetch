@@ -42,30 +42,30 @@ then
 		if [ $2 = "pf" ]
 		then
 			cat /proc/uptime
-			/home/melody/work/trapfetch/prefetcher/prefetcher.x86_64 /home/melody/GOG\ Games/tmp/ARK/start.sh
+			/home/melody/work/trapfetch/prefetcher/prefetcher.x86_64 /home/melody/GOG\ Games/ARK/start.sh
 		elif [ $2 = "cold" ]
 		then
 			cat /proc/uptime
-			/home/melody/GOG\ Games/tmp/ARK/start.sh
+			/home/melody/GOG\ Games/ARK/start.sh
 		elif [ $2 = "warm" ]
 		then
 			cat /proc/uptime
-			/home/melody/GOG\ Games/tmp/ARK/start.sh
+			/home/melody/GOG\ Games/ARK/start.sh
 		fi
 	elif [ $APPNAME = "longdark" ]
 	then
 		if [ $2 = "pf" ]
 		then
 			cat /proc/uptime
-			/home/melody/work/trapfetch/prefetcher/prefetcher.x86_64 /home/melody/GOG\ Games/The\ Long\ Dark/The\ Long\ Dark/tld
+			/home/melody/work/trapfetch/prefetcher/prefetcher.x86_64 /home/melody/GOG\ Games/The\ Long\ Dark/tld
 		elif [ $2 = "cold" ]
 		then
 			cat /proc/uptime
-			/home/melody/GOG\ Games/The\ Long\ Dark/The\ Long\ Dark/tld
+			/home/melody/GOG\ Games/The\ Long\ Dark/tld
 		elif [ $2 = "warm" ]
 		then
 			cat /proc/uptime
-			/home/melody/GOG\ Games/The\ Long\ Dark/The\ Long\ Dark/tld
+			/home/melody/GOG\ Games/The\ Long\ Dark/tld
 		fi
 	elif [ $APPNAME = "EoCApp" ]
 	then

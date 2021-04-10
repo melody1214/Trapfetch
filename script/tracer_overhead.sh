@@ -2,147 +2,75 @@
 
 APPNAME=$1
 SCENARIO=$2
+PATH_TRACER=/home/melody/work/trapfetch/tracer/tracer.x86_64
+PATH_ONLYOFFICE_DOC=/usr/bin/onlyoffice-desktopeditors
 
 mem_clean() {
-	echo 3 > /proc/sys/vm/drop_caches
+	sudo -u melody echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
 	sync
 	sleep 2
 }
 
-if [ $APPNAME = "firefox" ]
-then
-	echo 1283150984 > /proc/lba_check #launch
+set_flag() {
+	cd /home/melody/work/trapfetch/tracer
+	make exp
+}
 
-	mem_clean
-	cat /proc/uptime
-	/home/melody/study/projects/trapfetch/tracer.x86_64 /usr/lib/firefox/firefox
-elif [ $APPNAME = "PillarsOfEternity" ]
+if [ $SCENARIO = "syscall" ]
 then
-	if [ $SCENARIO = "launch" ]
-	then
-		echo 1283150984 > /proc/lba_check #launch
-	elif [ $SCENARIO = "loading1" ]
-	then
-		echo 1275854016 > /proc/lba_check #loading 1
-	elif [ $SCENARIO = "loading2" ]
-	then
-		echo 1277231808 > /proc/lba_check #loading 2
-	fi
+	set_flag
+	cd $OLDPWD
 	mem_clean
-	cat /proc/uptime
-	/home/melody/study/projects/trapfetch/tracer.x86_64 /usr/games/PillarsOfEternity
+elif [ $SCENARIO = "mmap" ]
+then
+	make tracer
+	mem_clean
+fi
+cat /proc/uptime
+
+if [ $APPNAME = "android-studio" ]
+then
+	$PATH_TRACER /home/melody/android-studio/android-studio/bin/studio.sh
+elif [ $APPNAME = "ARK" ]
+then
+	$PATH_TRACER /home/melody/GOG\ Games/ARK/start.sh
 elif [ $APPNAME = "fgfs" ]
 then
-	if [ $SCENARIO = "launch" ]
-	then
-		echo 1874410720 > /proc/lba_check
-	fi
-
-	mem_clean
-	cat /proc/uptime
-	/home/melody/study/projects/trapfetch/tracer.x86_64 /usr/games/fgfs
-elif [ $APPNAME = "speed-dreams-2" ]
+	$PATH_TRACER /usr/games/fgfs
+elif [ $APPNAME = "onlyoffice-doc" ]
 then
-	if [ $SCENARIO = "launch" ]
-	then
-		echo 1251001224 > /proc/lba_check
-	elif [ $SECNARIO = "loading1" ]
-	then
-		echo 1251129576 > /proc/lba_check
-	fi
-
-	mem_clean
-	cat /proc/uptime
-	/home/melody/study/projects/trapfetch/tracer.x86_64 /usr/games/speed-dreams-2
+	$PATH_TRACER $PATH_ONLYOFFICE_DOC --new=doc
+elif [ $APPNAME = "firefox" ]
+then
+	$PATH_TRACER /usr/lib/firefox/firefox
+elif [ $APPNAME = "PillarsOfEternity" ]
+then
+	$PATH_TRACER /home/melody/GOG\ Games/Pillars\ of\ Eternity\ II\ Deadfire/game/PillarsOfEternityII
+elif [ $APPNAME = "fgfs" ]
+then
+	$PATH_TRACER /usr/games/fgfs
 elif [ $APPNAME = "longdark" ]
 then
-	if [ $SCENARIO = "launch" ]
-	then
-		echo 1794125064 > /proc/lba_check
-	elif [ $SCENARIO = "loading1" ]
-	then
-		echo 1861728808 > /proc/lba_check
-	fi
-
-	mem_clean
-	cat /proc/uptime
-	/home/melody/study/projects/trapfetch/tracer.x86_64 /home/melody/The_Long_Dark/TheLongDark/tld.x86_64
+	$PATH_TRACER /home/melody/GOG\ Games/The\ Long\ Dark/tld
 elif [ $APPNAME = "EoCApp" ]
 then
-	if [ $SCENARIO = "launch" ]
-	then
-		echo 1775277696 > /proc/lba_check #launch
-	elif [ $SCENARIO = "loading1" ]
-	then
-		echo 1773020952 > /proc/lba_check #loading1
-	elif [ $SCENARIO = "loading2" ]
-	then
-		echo 1774031048 > /proc/lba_check #loading2
-	fi
-
-	mem_clean
 	export "LD_LIBRARY_PATH=/home/melody/GOG Games/Divinity Original Sin Enhanced Edition/game/"
-	cat /proc/uptime
-	/home/melody/study/projects/trapfetch/tracer.x86_64 /home/melody/GOG\ Games/Divinity\ Original\ Sin\ Enhanced\ Edition/game/EoCApp
+	$PATH_TRACER /home/melody/GOG\ Games/Divinity\ Original\ Sin\ Enhanced\ Edition/game/EoCApp
 elif [ $APPNAME = "eclipse" ]
 then
-	if [ $SCENARIO = "launch" ]
-	then
-		echo 1537885968 > /proc/lba_check
-	fi
-
-	mem_clean
-	cat /proc/uptime
-	/home/melody/study/projects/trapfetch/tracer.x86_64 /home/melody/eclipse/java-neon/eclipse/eclipse
+	$PATH_TRACER /home/melody/eclipse/java-2021-03/eclipse/eclipse
 elif [ $APPNAME = "swriter" ]
 then
-	if [ $SCENARIO = "launch" ]
-	then
-		echo 1085385264 > /proc/lba_check #launch
-	fi
-
-	mem_clean
-	cat /proc/uptime
-	/home/melody/study/projects/trapfetch/tracer.x86_64 /usr/lib/libreoffice/program/soffice.bin --writer
+	$PATH_TRACER /usr/lib/libreoffice/program/swriter
 elif [ $APPNAME = "impress" ]
 then
-	if [ $SCENARIO = "launch" ]
-	then
-		echo 1085671408 > /proc/lba_check #launch
-	fi
-	
-	mem_clean
-	cat /proc/uptime
-	/home/melody/study/projects/trapfetch/tracer.x86_64 /usr/lib/libreoffice/program/soffice.bin --impress
+	$PATH_TRACER /usr/lib/libreoffice/program/simpress
 elif [ $APPNAME = "SOMA" ]
 then
-	if [ $SCENARIO = "launch" ]
-	then
-		echo 1118438128 > /proc/lba_check #launch
-	elif [ $SCENARIO = "loading1" ]
-	then
-		echo 1198180224 > /proc/lba_check #loading1
-	elif [ $SCENARIO = "loading2" ]
-	then
-		echo 1231488352 > /proc/lba_check #loading2
-	fi
-
-	mem_clean
-	cat /proc/uptime
-	/home/melody/study/projects/trapfetch/tracer.x86_64 /home/melody/GOG\ Games/SOMA/game/Soma.bin.x86_64
+	$PATH_TRACER /home/melody/GOG\ Games/SOMA/game/Soma.bin.x86_64
 elif [ $APPNAME = "vegastrike" ]
 then
-	if [ $SCENARIO = "launch" ]
-	then
-		echo 1424748992 > /proc/lba_check #launch
-	elif [ $SCENARIO = "loading1" ]
-	then
-		echo 1529577760 > /proc/lba_check #loading1
-	fi
-	
-	mem_clean
-	cat /proc/uptime
-	/home/melody/study/projects/trapfetch/tracer.x86_64 /usr/games/vegastrike
+	$PATH_TRACER /usr/games/vegastrike
 fi
 
 
